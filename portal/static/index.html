@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PORTAL</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand">PORT<i>A</i>L</div>
+  <div class="qwrap">
+    <input id="q" type="text" autocomplete="off" spellcheck="false"
+           placeholder="IP · domain · email · URL · coordinates · place · barcode · CVE · hash — or drop / paste a file">
+  </div>
+  <button class="btn primary" id="go">Scan</button>
+  <button class="btn" id="pick" title="Analyze an image, video or any file">Open file</button>
+  <button class="btn" id="bulk" title="Triage a list of IPs, domains, URLs, hashes, emails or CVEs">Bulk</button>
+  <button class="btn" id="headersBtn" title="Analyze raw email headers">Headers</button>
+  <button class="btn" id="history" title="Saved scans and what changed">History</button>
+  <button class="btn" id="explain" title="Optional: AI explanation of the findings (your own API key)">✦ Explain</button>
+  <button class="btn" id="shareAll" data-share="1" title="Share everything on screen">Share</button>
+  <button class="btn" id="report" title="Download everything on screen as a text report">Report</button>
+  <button class="btn" id="layout" title="Switch layout">▦ Tiles</button>
+  <button class="btn iconbtn" id="more" title="More options">⋯</button>
+  <button class="btn iconbtn" id="sound" title="Sound">🔊</button>
+  <button class="btn" id="clear">Clear</button>
+  <input id="file" type="file" hidden>
+</header>
+<div id="progress"></div>
+<div id="snapbar" hidden></div>
+
+<main id="stage">
+  <div id="canvas">
+    <svg id="wires" width="100%" height="100%"></svg>
+    <div id="layer"></div>
+    <div id="empty">
+      <div class="empty-title">One box. Everything at once.</div>
+      <div class="empty-sub">Type a target, or drop a photo / video / file anywhere. Press <kbd>/</kbd> to focus.</div>
+      <div class="examples" id="examples"></div>
+    </div>
+  </div>
+</main>
+
+<footer id="status">
+  <span class="stat"><i class="d d-info"></i>windows <b id="st-win">0</b></span>
+  <span class="stat bad"><i class="d d-bad"></i>critical <b id="st-bad">0</b></span>
+  <span class="stat warn"><i class="d d-warn"></i>warnings <b id="st-warn">0</b></span>
+  <span class="stat ok"><i class="d d-ok"></i>clean <b id="st-ok">0</b></span>
+  <span class="stat run"><i class="d d-run"></i>running <b id="st-run">0</b></span>
+  <span id="dock"></span>
+  <span class="hint">drag a title onto another window to swap · double-click to zoom · <kbd>L</kbd> layout · <kbd>M</kbd> mute · <kbd>/</kbd> search</span>
+</footer>
+
+<div id="drop"><div>Drop file to analyze</div></div>
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+<script src="/static/tools.js"></script>
+</body>
+</html>
