@@ -76,6 +76,19 @@ This is a heuristic, not a guarantee: it errs toward blocking and fails closed w
 - **Headers**: paste raw email headers to get hop timeline with delays, SPF/DKIM/DMARC, spoof flags (display-name, Reply-To, lookalike/IDN domains) and one-click pivots on the origin IP and domains.
 - Data lives in `~/.local/share/portal` (override with `PORTAL_DATA`), folder mode 0700, file 0600. Stays on this machine.
 
+## Smart layer (v6): tool check, next steps, Kali 2026 tools
+- **Next steps** window: after a scan, PORTAL reads the results on screen and ranks what to do next (critical findings first, then e.g. *WordPress detected → list plugins*, *risky open ports → verify services*, *login page → crawl the site*). It is plain rules, runs locally, sends nothing anywhere, and never runs a tool by itself. Reopen it from ⋯ → **Show next steps**.
+- **Tool check** (⋯ menu): which optional tools are installed, with the exact install command for each missing one (and a *Copy all* button). Missing tools never break anything; their buttons just stay hidden.
+- New click-to-run tools in the toolbox (from Kali 2026.1–2026.3), all behind the authorisation tick-box:
+  - `rustscan` fast port sweep, and *rustscan → nmap versions*
+  - `katana` crawl piped through `uro` to dedupe the URL list
+  - `wpprobe` WordPress plugin enumeration
+  - **Intrusive** (☠, attack-style payloads): `dalfox`, `sstimap`, `xsstrike`. These also make you **type the target host** before every run, and only exist for sites you own or are authorised to test.
+
+      sudo apt install rustscan katana uro wpprobe dalfox sstimap xsstrike
+
+- A pasted URL now also opens the Local toolbox (URL-based tools use the URL; host-based tools use its host).
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 

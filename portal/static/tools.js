@@ -46,7 +46,7 @@ hooks.closed = w => { if (w.id === 'diff') diffDismissed = true; };
 hooks.done = () => { if (autosave && !snapshotMode) saveScan(); };
 
 function snapshotPayload() {
-  return [...wins.values()].filter(w => w.res && w.id !== 'root' && w.id !== 'diff').sort((a, b) => a.seq - b.seq).map(w => ({
+  return [...wins.values()].filter(w => w.res && w.id !== 'root' && w.id !== 'diff' && w.id !== 'next').sort((a, b) => a.seq - b.seq).map(w => ({
     id: w.id, module: w.spec.module, q: w.spec.q ?? '', title: w.titleEl.textContent, sub: w.spec.sub ?? '',
     depth: w.depth, parent: w.parent ?? 'root', res: w.res }));
 }
@@ -335,6 +335,8 @@ $('#more').addEventListener('click', e => openMenu(e.currentTarget, [
     toast(autosave ? 'Scans are saved automatically' : 'Auto-save is off', true);
   } },
   { label: 'Save this scan now', run: () => { lastSavedSig = ''; saveScan().then(() => toast('Saved to history', true)); } },
+  { label: 'Tool check (installed / missing)', run: () => openToolCheck() },
+  { label: 'Show next steps', run: () => showNextSteps() },
 ]));
 input.addEventListener('paste', e => {                    // pasting several lines into the search box opens bulk triage
   const t = (e.clipboardData && e.clipboardData.getData('text')) || '';

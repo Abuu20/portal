@@ -495,7 +495,7 @@ const MODULE_TITLES = { ip: 'IP intelligence', dns: 'DNS records', rdap: 'Regist
     const box = el('div', { class: 'tbx' });
     if (!res.actions.length) {
       box.append(el('p', { class: 'note', text: res.target
-        ? 'None of the supported tools are installed. On Kali: sudo apt install nmap dnsutils whois whatweb traceroute'
+        ? 'None of the supported tools are installed. Open ⋯ → Tool check for the exact install commands.'
         : 'The toolbox needs a single host or domain.' }));
       return box;
     }
@@ -504,12 +504,19 @@ const MODULE_TITLES = { ip: 'IP intelligence', dns: 'DNS records', rdap: 'Regist
     out.hidden = true;
     const btns = el('div', { class: 'links' });
     for (const a of res.actions) {
-      const b = el('button', { class: 'btn small', text: a.label + (a.active ? ' ⚠' : ''), title: a.active ? 'sends traffic to the target' : 'passive / local' });
+      const b = el('button', { class: 'btn small' + (a.intrusive ? ' danger' : ''), text: a.label + (a.intrusive ? ' ☠' : a.active ? ' ⚠' : ''),
+        title: a.intrusive ? 'sends attack-style payloads: tick the box AND type the host to confirm' : a.active ? 'sends traffic to the target' : 'passive / local' });
       b.addEventListener('click', async () => {
         if (a.active && !chk.checked) { toast('Tick the authorisation box first'); return; }
+        let typed = '';
+        if (a.intrusive) {
+          typed = prompt(`${a.label} sends attack-style payloads.\nOnly continue if you are authorised to test this target.\n\nType the host (${res.target}) to confirm:`);
+          if (typed == null) return;
+        }
         sfx.click(); b.disabled = true; out.hidden = false; out.textContent = `running ${a.label}…`;
         const r = await api('/api/tool', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ tool: a.id, target: res.target, confirm: chk.checked }) });
+                            body: JSON.stringify({ tool: a.id, target: a.kind === 'url' ? (res.url || res.target) : res.target,
+                                                   confirm: chk.checked, confirm_target: typed }) });
         out.textContent = r.error ? '⚠ ' + r.error : `$ ${r.command}\n\n${r.output}`;
         if (r.error) sfx.error(); else sfx.done(false);
         w.extra = (w.extra || '') + `\n\n--- ${a.label} ---\n${out.textContent}`;

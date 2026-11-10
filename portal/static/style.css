@@ -230,3 +230,13 @@ kbd{font:11px var(--mono);border:1px solid #2a3d5c;border-radius:4px;padding:1px
 .hextra:not(:empty){margin-top:8px;padding:8px;background:#08101c;border:1px solid var(--line);border-radius:8px}
 .mini .sec td:first-child{width:22%}
 .codeblk{background:rgba(127,127,127,.12);border-radius:6px;padding:8px 10px;font-size:12px;overflow:auto;user-select:all}
+
+/* smart layer: next steps + intrusive tool buttons */
+.btn.danger{border-color:var(--bad);color:#ffc6d0}.btn.danger:hover{background:#2a0f18}
+.nxlist{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.nx{padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--info);border-radius:8px;background:rgba(8,14,26,.6)}
+.nx-bad{border-left-color:var(--bad)}.nx-warn{border-left-color:var(--warn)}.nx-ok{border-left-color:var(--ok)}
+.nx-h{display:flex;gap:8px;align-items:center;font-size:12.5px}
+.nx-n{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#16233b;color:var(--acc);font:11px var(--mono);flex:none}
+.nxauth{display:flex;gap:7px;align-items:flex-start;color:var(--mut);font-size:12px;margin:8px 0 0;cursor:pointer}
+.nxauth input{margin-top:2px}
