@@ -29,7 +29,7 @@ import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from html.parser import HTMLParser
-from urllib.parse import quote, unquote, urljoin, urlparse
+from urllib.parse import parse_qsl, quote, unquote, urljoin, urlparse
 
 from flask import Flask, abort, jsonify, request, send_from_directory
 
@@ -651,6 +651,29 @@ def mod_product_search(q):
     pivots = [{"module": "product", "q": p["code"], "label": p["product_name"][:28], "auto": False} for p in prods[:4]]
     return R("Product search", "▤", highlights=[chip("Matches", str(len(prods)), "info")], sections=[{"title": "Open Food Facts", "rows": rows}], pivots=pivots)
 
+def epss_scores(cves):
+    """EPSS (FIRST.org): estimated probability that a CVE is exploited in the next 30 days.
+    Returns {CVE: {"epss": 0..1, "pct": 0..1}}; empty on any failure so callers never break."""
+    ids = sorted({str(c).upper() for c in cves if CVE_RE.match(str(c or ""))})[:50]
+    if not ids:
+        return {}
+    def fetch():
+        d = http_json("https://api.first.org/data/v1/epss?cve=" + ",".join(ids), timeout=10)
+        out = {}
+        for r in d.get("data") or []:
+            try:
+                out[str(r["cve"]).upper()] = {"epss": float(r["epss"]), "pct": float(r["percentile"])}
+            except (KeyError, TypeError, ValueError):
+                pass
+        return out
+    try:
+        return cached("epss|" + ",".join(ids), 3600, fetch)
+    except Exception:
+        return {}
+
+def epss_chip(p, label="EPSS"):
+    return chip(label, f"{p * 100:.1f}% exploit chance (30 d)", "bad" if p >= 0.5 else "warn" if p >= 0.1 else "info")
+
 def mod_cve(q):
     cid = q.upper()
     d = http_json(f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={quote(cid)}", timeout=15)
@@ -672,11 +695,15 @@ def mod_cve(q):
         chips.append(chip("CVSS", f"{score} {sev or ''}".strip(), "bad" if score >= 7 else "warn" if score >= 4 else "info"))
     if c.get("cisaExploitAdd"):
         chips.append(chip("Known exploited (CISA KEV)", None, "bad"))
+    ep = epss_scores([cid]).get(cid)
+    if ep:
+        chips.append(epss_chip(ep["epss"]))
     cwes = [dd["value"] for w in c.get("weaknesses", []) for dd in w.get("description", [])]
     rows = [row("ID", c.get("id")), row("Published", (c.get("published") or "")[:10]), row("Modified", (c.get("lastModified") or "")[:10]), row("Vector", vec), row("Weakness", ", ".join(cwes)), row("KEV due date", c.get("cisaActionDue")), row("KEV action", c.get("cisaRequiredAction"))]
     rows = [r for r in rows if r[1] not in ("", "None")]
     links = [{"label": (r["url"][:40] + "…") if len(r["url"]) > 40 else r["url"], "url": r["url"]} for r in (c.get("references") or [])[:6]]
-    return R("CVE details", "☢", highlights=chips, sections=[{"title": "Record", "rows": rows}], note=desc[:1200], links=links)
+    return R("CVE details", "☢", highlights=chips, sections=[{"title": "Record", "rows": rows}], note=desc[:1200], links=links,
+             epss={cid: ep["epss"]} if ep else {})
 
 def mod_hash(q):
     kinds = {32: "MD5", 40: "SHA-1", 64: "SHA-256"}
@@ -1342,8 +1369,12 @@ def mod_exposure(q):
     chips = [chip("Open ports", str(len(ports)), "bad" if risky else "warn" if len(ports) > 10 else "info")]
     if risky:
         chips.append(chip("Risky services", ", ".join(risky[:5]), "bad"))
+    ep = epss_scores(vulns) if vulns else {}
     if vulns:
+        vulns.sort(key=lambda v: (-ep.get(v, {}).get("epss", 0), v))     # most likely to be exploited first
         chips.append(chip("Known vulns", str(len(vulns)), "bad"))
+        if ep:
+            chips.append(epss_chip(max(e["epss"] for e in ep.values()), "Top EPSS"))
     for t in (idb.get("tags") or [])[:4]:
         chips.append(chip("Tag", t, "warn" if t in ("malware", "scanner", "compromised", "c2") else "info"))
     products = {}
@@ -1358,7 +1389,8 @@ def mod_exposure(q):
 
     sections = [{"title": "Open ports", "rows": [port_row(p) for p in ports]}]
     if vulns:
-        sections.append({"title": "Known vulnerabilities", "rows": [["CVE", v] for v in vulns[:30]]})
+        sections.append({"title": "Known vulnerabilities",
+                         "rows": [["CVE", v] for v in vulns[:30]]})
     if hosts:
         sections.append({"title": "Hostnames", "rows": [["host", h] for h in hosts[:15]]})
     if idb.get("cpes"):
@@ -1366,7 +1398,8 @@ def mod_exposure(q):
     if full.get("org") or full.get("os"):
         sections.append({"title": "Shodan host", "rows": [r for r in (row("Org", full.get("org")), row("OS", full.get("os")), row("Last seen", (full.get("last_update") or "")[:10])) if r[1] not in ("", "None")]})
     pivots = [{"module": "cve", "q": v, "label": v, "auto": i < 2} for i, v in enumerate(vulns[:6])]
-    return R("Exposure (Shodan)", "☢", highlights=chips, sections=sections, pivots=pivots, note=note)
+    return R("Exposure (Shodan)", "☢", highlights=chips, sections=sections, pivots=pivots, note=note,
+             epss={v: e["epss"] for v, e in ep.items()})
 
 def _day(ts):
     try:
@@ -1849,6 +1882,84 @@ def api_toolstatus():
                for k, v in TOOLS.items()}
     return jsonify(tools=tool_status(), actions=actions)
 
+_NMAP_PORT = re.compile(r"^(\d{1,5})/(tcp|udp)\s+open\S*\s+(\S+)\s*(.*)$")
+_RUSTSCAN_G = re.compile(r"^(\S+)\s*->\s*\[([\d,\s]*)\]")
+_CVE_ANY = re.compile(r"CVE-\d{4}-\d{4,}", re.I)
+_WP_PLUGIN = re.compile(r"plugin\W+([a-z0-9][a-z0-9_-]+)\W+v?(\d+(?:\.\d+)+)", re.I)
+_PORT_TOOLS = {"nmap_quick", "nmap_services", "rustscan_nmap", "rustscan_ports"}
+_VULN_MARKERS = {   # best-effort: phrases each scanner prints when it believes it found something
+    "dalfox": re.compile(r"\[V\]"),
+    "xsstrike": re.compile(r"vulnerable webpage", re.I),
+    "sstimap": re.compile(r"identified the following injection point", re.I),
+}
+
+def parse_findings(tool, text):
+    """Raw tool output -> structured findings (ports, endpoints, CVEs, vulns) the UI can reason about.
+    Best effort and bounded; it never raises. Nmap/rustscan/katana formats are stable; wpprobe and the
+    scanner markers are heuristics, so only CVE ids and marker lines are extracted from them."""
+    out = []
+    try:
+        lines = [ln.strip() for ln in (text or "").splitlines()]
+        if tool in _PORT_TOOLS:
+            ports = {}
+            for ln in lines:
+                m = _NMAP_PORT.match(ln)
+                if m and 0 < int(m.group(1)) < 65536:
+                    ports[int(m.group(1))] = {"type": "port", "port": int(m.group(1)), "proto": m.group(2),
+                                              "service": m.group(3)[:40], "version": m.group(4).strip()[:120]}
+                    continue
+                g = _RUSTSCAN_G.match(ln)
+                if g:
+                    for p in re.findall(r"\d+", g.group(2)):
+                        if 0 < int(p) < 65536:
+                            ports.setdefault(int(p), {"type": "port", "port": int(p), "proto": "tcp", "service": "", "version": ""})
+            out = [ports[p] for p in sorted(ports)][:200]
+        elif tool == "katana_crawl":
+            seen = set()
+            for ln in lines:
+                if not re.match(r"^https?://\S+$", ln) or ln in seen:
+                    continue
+                seen.add(ln)
+                params = [k for k, _ in parse_qsl(urlparse(ln).query, keep_blank_values=True)]
+                out.append({"type": "endpoint", "url": ln[:300], "params": list(dict.fromkeys(params))[:10]})
+                if len(out) >= 300:
+                    break
+        elif tool == "wpprobe":
+            for cid in list(dict.fromkeys(c.upper() for c in _CVE_ANY.findall(text or "")))[:40]:
+                out.append({"type": "cve", "id": cid})
+            for ln in lines:
+                m = _WP_PLUGIN.search(ln)
+                if m:
+                    out.append({"type": "plugin", "name": m.group(1).lower()[:60], "version": m.group(2)})
+        elif tool in _VULN_MARKERS:
+            for ln in lines:
+                if _VULN_MARKERS[tool].search(ln):
+                    out.append({"type": "vuln", "tool": tool, "detail": ln[:300]})
+                    if len(out) >= 20:
+                        break
+    except Exception:
+        return []
+    return out
+
+def summarize_findings(fs):
+    parts = []
+    ports = [f for f in fs if f["type"] == "port"]
+    eps = [f for f in fs if f["type"] == "endpoint"]
+    cves = [f for f in fs if f["type"] == "cve"]
+    plugins = [f for f in fs if f["type"] == "plugin"]
+    vulns = [f for f in fs if f["type"] == "vuln"]
+    if ports:
+        parts.append(f"{len(ports)} open port(s): " + ", ".join(f"{p['port']}/{p['service'] or '?'}" for p in ports[:8]))
+    if eps:
+        parts.append(f"{len(eps)} endpoint(s), {sum(1 for e in eps if e['params'])} with parameters")
+    if plugins:
+        parts.append(f"{len(plugins)} plugin(s) listed")
+    if cves:
+        parts.append(f"{len(cves)} CVE id(s)")
+    if vulns:
+        parts.append(f"{len(vulns)} possible vulnerability line(s)")
+    return "; ".join(parts)
+
 def mod_tools(q):
     target, url = _tool_target(q)
     chips = [chip(s["bin"], "installed" if shutil.which(s["bin"]) else "not installed",
@@ -1898,8 +2009,12 @@ def api_tool():
                 cmd += f" | {then['bin']}"
             else:
                 err = (err + "\n" if err else "") + f"({then['bin']} not installed, output not deduplicated: {EXTRA_BINS.get(then['bin'], ('',))[0]})"
+        findings = parse_findings(j.get("tool"), text)
+        summary = summarize_findings(findings)
+        if summary:
+            text = f"# Parsed: {summary}\n" + text
         out = text + (("\n" + err) if err else "")
-        return jsonify(output=out[:30000] or "(no output)", command=cmd, code=p.returncode)
+        return jsonify(output=out[:30000] or "(no output)", command=cmd, code=p.returncode, findings=findings)
     except subprocess.TimeoutExpired:
         return jsonify(error=f"{spec['bin']} timed out after {spec['timeout']}s"), 504
     finally:
@@ -2154,7 +2269,7 @@ def _db():
     con.row_factory = sqlite3.Row
     return con
 
-_VOLATILE_CHIPS = {"valid", "expires", "age", "latest", "running", "articles", "sources"}
+_VOLATILE_CHIPS = {"valid", "expires", "age", "latest", "running", "articles", "sources", "epss", "top epss"}
 _VOLATILE_ROWS = {"last seen", "last analysed", "last reported", "last changed", "last update", "closest snapshot",
                   "size read", "content-length", "last-modified", "generated", "url"}
 _DIFF_SKIP = {"links", "tools", "launch", "news", "scope", "hash", "diff", "nearby", "sherlock", "maigret", "wikidata"}

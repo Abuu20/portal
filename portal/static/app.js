@@ -38,7 +38,7 @@ let linesFlow = store.get('portal.linesFlow', '1') !== '0';
 let hoverId = null;                // tile under the pointer (glow on linked tiles)
 let snapshotMode = false;          // viewing a saved snapshot: no live pivots, no auto-save
 let scanType = '';                 // type of the current scan (ip, domain, file, headers, ...)
-const hooks = { done() {}, reset() {}, closed() {} };   // filled in by tools.js
+const hooks = { done() {}, reset() {}, closed() {}, findings() {} };   // filled in by tools.js / smart.js
 let hoverHead = null;              // title bar under the pointer (draws link lines in tiles mode)
 const MAX_AUTO = 8, MAX_DEPTH = 3;
 const GAP = 10, PAD = 12, MIN_W = 240, MIN_H = 150, SCALES = [1, 1.2, 1.45, 1.8, 2.3, 3];
@@ -519,6 +519,7 @@ const MODULE_TITLES = { ip: 'IP intelligence', dns: 'DNS records', rdap: 'Regist
                                                    confirm: chk.checked, confirm_target: typed }) });
         out.textContent = r.error ? '⚠ ' + r.error : `$ ${r.command}\n\n${r.output}`;
         if (r.error) sfx.error(); else sfx.done(false);
+        if (!r.error && r.findings && r.findings.length) hooks.findings(a.id, res.target, r.findings);
         w.extra = (w.extra || '') + `\n\n--- ${a.label} ---\n${out.textContent}`;
         b.disabled = false;
       });

@@ -89,6 +89,12 @@ This is a heuristic, not a guarantee: it errs toward blocking and fails closed w
 
 - A pasted URL now also opens the Local toolbox (URL-based tools use the URL; host-based tools use its host).
 
+### Results feed the next step (v6.1)
+- **Parsed tool output:** nmap / rustscan ports, katana endpoints (with their parameter names), CVE ids from wpprobe, and `[V]`-style lines from dalfox / sstimap / xsstrike are turned into structured findings. A `# Parsed:` summary line appears above the raw output. Nmap, rustscan and katana formats are stable; wpprobe and the scanner markers are best-effort heuristics, so treat those as hints and verify by hand.
+- **Next steps reacts to them:** a confirmed risky port, a web service found on a new port, endpoints that take parameters, or CVE ids from the plugin scan each create or reorder suggestions, and already-answered suggestions disappear.
+- **EPSS** (FIRST.org, free, no key): CVE windows show the 30-day exploit probability, and the Exposure window sorts CVEs by it. If FIRST.org is unreachable PORTAL simply omits it.
+- **Risk score 0-100:** a heuristic, not CVSS. It adds up what is on screen (critical findings, warnings, CISA KEV, high EPSS, risky services, scanner hits) and lists every contribution under *Why this score*, so you can argue with it.
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 
