@@ -147,6 +147,14 @@ have in common: the same IP, network (ASN), nameserver or mail host, certificate
 first, big shared providers are tagged "common provider", and each target is a button that opens its saved scan.
 It uses only data already stored on this computer; nothing is fetched. Code: `portal_lib/correlate.py`, `static/correlate.js`.
 
+### HTML report (v6.6)
+
+**⋯ → Report as HTML** saves one self-contained, printable page (no scripts, nothing loaded from the network):
+counts of critical / warning / clean windows, the risk score with the reasons behind it, a "Needs attention"
+section first, the link graph as a picture, then every result. Open it in a browser and use Print → Save as PDF
+for a PDF. All text from lookups is escaped. The plain-text **Report** button is unchanged.
+Code: `static/report-html.js`.
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 

@@ -17,6 +17,7 @@ $('#more').addEventListener('click', e => openMenu(e.currentTarget, [
   { label: 'Tool check (installed / missing)', run: () => openToolCheck() },
   { label: 'Link graph (how entities connect)', run: () => openGraph() },
   { label: 'Shared infrastructure (across saved scans)', run: () => openCorrelate() },
+  { label: 'Report as HTML (printable, with link graph)', run: () => downloadHtmlReport() },
   { label: 'Show next steps', run: () => showNextSteps() },
 ]));
 input.addEventListener('paste', e => {                    // pasting several lines into the search box opens bulk triage
