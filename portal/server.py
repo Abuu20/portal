@@ -19,7 +19,7 @@ import webbrowser
 
 from portal_lib.core import app
 # importing these modules registers their /api routes on the Flask app
-from portal_lib import accounts, ai, correlate, files, headers, lookups, routes, store, surface, tools  # noqa: F401
+from portal_lib import accounts, ai, correlate, files, headers, lookups, routes, store, surface, tools, watch  # noqa: F401
 
 def main():
     ap = argparse.ArgumentParser(description="PORTAL local lookup dashboard")
@@ -37,6 +37,7 @@ def main():
             pass
     if a.open:
         threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{a.port}/")).start()
+    watch.start_scheduler()
     print(f"PORTAL running at http://127.0.0.1:{a.port}/  (Ctrl+C to stop)")
     app.run(host="127.0.0.1", port=a.port, threaded=True)
 

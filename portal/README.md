@@ -155,6 +155,17 @@ section first, the link graph as a picture, then every result. Open it in a brow
 for a PDF. All text from lookups is escaped. The plain-text **Report** button is unchanged.
 Code: `static/report-html.js`.
 
+### Watchlist (v6.7)
+
+**⋯ → Watchlist** (or **Watch this target** after a scan) re-scans chosen **domains and IP addresses** every
+6 h / 12 h / 1 day / 3 days / 1 week, saves each run to History (tagged `watchlist`), compares it with the previous
+scan of the same target, and raises an alert when something changed, for example a new IP, a changed nameserver or
+certificate, a new open port or CVE. Alerts show in the same window, and PORTAL pops a message when it finds new
+ones. Scheduled runs are the same passive lookups as a normal scan: **never the active tools**, never anything
+that needs the authorisation tick-box. Up to 25 targets, one scan at a time, with a pause between targets.
+The scheduler lives inside PORTAL, so it only runs while PORTAL is running; the KDE background service keeps it
+running after login. Data stays in the local history database. Code: `portal_lib/watch.py`, `static/watch.js`.
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 
