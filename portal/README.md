@@ -122,7 +122,8 @@ labelled with the relationship ("A", "MX", "announced by", "vulnerable to", "cer
 Drag nodes, scroll to zoom, drag the background to pan, click a legend chip to hide a type, click a node to see its
 connections and to start a lookup on it. A timeline strip shows registration and certificate dates.
 The graph is built from the scans already on screen and grows as new windows finish.
-Only infrastructure entities exist as node types; there are no person, phone or social-profile nodes.
+The graph currently draws infrastructure only. Username and phone lookups (`@handle`, phone numbers) work as before in
+their own windows; they are just not drawn as graph nodes yet.
 
 Code: `portal_lib/graph.py` (reads each module's finished result, so modules are untouched), and in `static/`
 `graph-data.js` (merge), `graph-layout.js` (force layout), `graph-view.js` (window).
@@ -157,7 +158,7 @@ Code: `static/report-html.js`.
 
 ### Watchlist (v6.7)
 
-**⋯ → Watchlist** (or **Watch this target** after a scan) re-scans chosen **domains and IP addresses** every
+**⋯ → Watchlist** (or **Watch this target** after a scan) re-scans chosen **domains and IP addresses** (username and phone lookups stay on-demand and are not scheduled) every
 6 h / 12 h / 1 day / 3 days / 1 week, saves each run to History (tagged `watchlist`), compares it with the previous
 scan of the same target, and raises an alert when something changed, for example a new IP, a changed nameserver or
 certificate, a new open port or CVE. Alerts show in the same window, and PORTAL pops a message when it finds new

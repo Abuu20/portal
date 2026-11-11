@@ -1,7 +1,7 @@
 """Relationship graph: turns a module's result into typed nodes and labelled edges.
 
 Only infrastructure entities are modelled (domain, ip, asn, org, port, cve, weakness, tech, location, email).
-There is deliberately no person, phone or social-profile node type.
+Username, phone and social-profile lookups have their own windows and are not drawn in the graph (yet).
 
 Each extractor reads the finished result of one module (its sections, chips and lists), so the modules
 themselves stay untouched. The result gains   result["graph"] = {"nodes": [...], "edges": [...], "events": [...]}
