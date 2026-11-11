@@ -1,5 +1,5 @@
 'use strict';
-/* PORTAL smart layer (loaded after tools.js, uses its globals):
+/* PORTAL smart layer (loaded last, uses the globals of the other scripts):
    - Tool check: which optional tools are installed, with the exact install command for the missing ones.
    - Next steps: a ranked list of what to do with what is already on screen (e.g. WordPress found -> list plugins,
      risky open ports -> verify services). Suggestions are plain rules, nothing is sent anywhere, and nothing

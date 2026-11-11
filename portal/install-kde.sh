@@ -27,8 +27,8 @@ command -v python3 >/dev/null || { echo "python3 is required"; exit 1; }
 python3 -c "import flask" 2>/dev/null || { echo "Flask missing. Run: sudo apt install python3-flask"; exit 1; }
 
 mkdir -p "$APP" "$BIN" "$(dirname "$UNIT")" "$(dirname "$DESK")" "$(dirname "$ICON")"
-rm -rf "$APP/static"
-cp -r "$SRC/server.py" "$SRC/static" "$APP/"
+rm -rf "$APP/static" "$APP/portal_lib"
+cp -r "$SRC/server.py" "$SRC/portal_lib" "$SRC/static" "$APP/"
 find "$APP" -name __pycache__ -prune -exec rm -rf {} +
 cp "$SRC/kde/portal.svg" "$ICON"
 

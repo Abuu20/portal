@@ -76,6 +76,19 @@ This is a heuristic, not a guarantee: it errs toward blocking and fails closed w
 - **Headers**: paste raw email headers to get hop timeline with delays, SPF/DKIM/DMARC, spoof flags (display-name, Reply-To, lookalike/IDN domains) and one-click pivots on the origin IP and domains.
 - Data lives in `~/.local/share/portal` (override with `PORTAL_DATA`), folder mode 0700, file 0600. Stays on this machine.
 
+## Code layout (kept small on purpose)
+No file is over about 330 lines, so each one can be read, edited and reviewed whole.
+
+| Back end (`portal_lib/`) | What lives there |
+|---|---|
+| `core.py` | Flask app, request guard, cache, HTTP helpers, result builders, input detection, DNS-over-HTTPS, SSRF-safe fetch |
+| `net.py` · `intel.py` · `web.py` · `geo.py` | DNS/RDAP/TLS/IP/email/URL · CVE+EPSS, exposure, reputation · site intelligence · places |
+| `files.py` · `headers.py` · `accounts.py` · `lookups.py` | file analysis · email headers · usernames and phone · products, papers, news |
+| `tools.py` · `surface.py` | local toolbox and output parsers · attack-surface map |
+| `store.py` · `ai.py` · `routes.py` | history and diffs · optional AI summary · module registry and `/api/run` |
+
+`server.py` is only the entry point. Front end (`static/`): `app-core.js` → `app-windows.js` → `app-render.js` → `app-search.js` → `history.js` → `bulk.js` → `menu.js` → `smart.js`, loaded in that order and sharing globals.
+
 ## Smart layer (v6): tool check, next steps, Kali 2026 tools
 - **Next steps** window: after a scan, PORTAL reads the results on screen and ranks what to do next (critical findings first, then e.g. *WordPress detected → list plugins*, *risky open ports → verify services*, *login page → crawl the site*). It is plain rules, runs locally, sends nothing anywhere, and never runs a tool by itself. Reopen it from ⋯ → **Show next steps**.
 - **Tool check** (⋯ menu): which optional tools are installed, with the exact install command for each missing one (and a *Copy all* button). Missing tools never break anything; their buttons just stay hidden.
