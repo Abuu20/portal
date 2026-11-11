@@ -131,6 +131,7 @@ const visibleWins = () => [...wins.values()].filter(w => !w.min).sort((a, b) => 
 
 function weightOf(w) {
   if (w.id === 'root') return 0.85;
+  if (w.id === 'graph') return 3.2;
   const r = w.res;
   if (!r) return 1;
   let x = 1;

@@ -114,6 +114,19 @@ For a domain, the **Next steps** window offers *Map the attack surface* once the
 - The score says what to look at first, not that something is vulnerable. A takeover hit is a strong lead, but confirm it before acting on it.
 - Hosts scoring 40+ feed back into Next steps and the risk score, and the top hosts get one-click pivots into *Site intelligence*.
 
+### Link graph (v6.3)
+
+**⋯ → Link graph** opens a relationship window in the style of a link-analysis tool: entities are nodes
+(domain, IP, ASN, organisation, open port, CVE, weakness, technology, location, email address), the lines are
+labelled with the relationship ("A", "MX", "announced by", "vulnerable to", "certificate issued by" ...).
+Drag nodes, scroll to zoom, drag the background to pan, click a legend chip to hide a type, click a node to see its
+connections and to start a lookup on it. A timeline strip shows registration and certificate dates.
+The graph is built from the scans already on screen and grows as new windows finish.
+Only infrastructure entities exist as node types; there are no person, phone or social-profile nodes.
+
+Code: `portal_lib/graph.py` (reads each module's finished result, so modules are untouched), and in `static/`
+`graph-data.js` (merge), `graph-layout.js` (force layout), `graph-view.js` (window).
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 

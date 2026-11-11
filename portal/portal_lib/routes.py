@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from flask import jsonify, request, send_from_directory
 
 from .core import PLANS, STATIC, TONE_RANK, _cache, _cache_lock, app, detect
+from .graph import attach_graph
 from .net import mod_dns, mod_email, mod_ip, mod_rdap, mod_rdap_ip, mod_subs, mod_tls, mod_url
 from .intel import mod_cve, mod_exposure, mod_hash, mod_reputation
 from .web import mod_web
@@ -71,6 +72,7 @@ def run_module(m, q):
         res = {"error": f"Network error: {e.reason}"}
     except Exception as e:
         res = {"error": f"{type(e).__name__}: {e}"}
+    attach_graph(m, q, res)
     if "error" not in res and m not in NO_CACHE:
         with _cache_lock:
             _cache[key] = (time.time(), res)

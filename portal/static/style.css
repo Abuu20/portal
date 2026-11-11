@@ -240,3 +240,28 @@ kbd{font:11px var(--mono);border:1px solid #2a3d5c;border-radius:4px;padding:1px
 .nx-n{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#16233b;color:var(--acc);font:11px var(--mono);flex:none}
 .nxauth{display:flex;gap:7px;align-items:flex-start;color:var(--mut);font-size:12px;margin:8px 0 0;cursor:pointer}
 .nxauth input{margin-top:2px}
+
+/* ---- link graph window ---- */
+.lg{display:flex;gap:10px;height:100%;min-height:360px}
+.lg-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.lg-legend{display:flex;flex-wrap:wrap;gap:5px}
+.lg-chip{background:#0b1424;border:1px solid var(--line);color:var(--text);border-radius:14px;padding:3px 9px;font:11px var(--ui);cursor:pointer}
+.lg-chip i{font-style:normal}.lg-chip.off{opacity:.38}
+.lg-cv{flex:1;min-height:260px;border:1px solid var(--line);border-radius:8px;background:radial-gradient(#0d1626,#070b12);overflow:hidden}
+.lg-svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+.lg-edge{stroke:#34507a;stroke-width:1.3}
+.lg-rel{fill:var(--mut);font:9px var(--ui);text-anchor:middle;pointer-events:none}
+.lg-node{cursor:pointer}.lg-node circle{stroke-width:1.8}.lg-node.sel circle{stroke-width:3.5;filter:drop-shadow(0 0 6px #fff8)}
+.lg-g{text-anchor:middle;fill:#fff;font:13px var(--ui);pointer-events:none}
+.lg-l{text-anchor:middle;fill:var(--text);font:10px var(--mono);pointer-events:none}
+.lg-tl{display:flex;gap:6px;overflow-x:auto;padding:2px 0}
+.lg-ev{flex:none;background:#0b1424;border:1px solid var(--line);color:var(--mut);border-radius:6px;padding:3px 8px;font:11px var(--ui);cursor:pointer;white-space:nowrap}
+.lg-ev b{color:var(--text)}
+.lg-ins{width:230px;flex:none;border-left:1px solid var(--line);padding-left:10px;overflow:auto}
+.lg-ins h4{margin:0 0 2px;font-size:14px;word-break:break-all}
+.lg-sec{margin:10px 0 4px;color:var(--mut);font:11px var(--ui);text-transform:uppercase;letter-spacing:.05em}
+.lg-list{list-style:none;margin:0;padding:0;font-size:12px}.lg-list li{padding:2px 0;word-break:break-all}
+.lg-rel2{color:var(--mut);font-size:11px}
+@media (max-width:700px){.lg{flex-direction:column}.lg-ins{width:auto;border-left:0;padding-left:0}}
+.lg-list a{color:var(--info);text-decoration:none}.lg-list a:hover{text-decoration:underline}
+.lg{user-select:none}
