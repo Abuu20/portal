@@ -13,6 +13,7 @@ import tempfile
 from flask import jsonify, request
 from urllib.parse import urlparse
 
+from .office import analyze_office
 from .core import ExifTags, HAVE_PIL, Image, ImageOps, R, app, chip, fetch_chain, row
 
 MAGIC = [
@@ -264,7 +265,11 @@ def analyze_file(path, name):
         head = f.read(4096)
     hashes = _hashes(path)
     res = None
-    if HAVE_PIL:
+    try:
+        res = analyze_office(path, name, size, hashes, head)
+    except Exception:
+        res = None
+    if res is None and HAVE_PIL:
         try:
             res = _analyze_image(path, name, size, hashes)
         except Exception:

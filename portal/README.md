@@ -127,6 +127,19 @@ Only infrastructure entities exist as node types; there are no person, phone or 
 Code: `portal_lib/graph.py` (reads each module's finished result, so modules are untouched), and in `static/`
 `graph-data.js` (merge), `graph-layout.js` (force layout), `graph-view.js` (window).
 
+### Office document analysis (v6.4)
+
+Drop a `.docx / .xlsx / .pptx / .docm / .xlsm`, a legacy `.doc / .xls`, or an `.rtf` on PORTAL. It is examined
+**without opening or running anything** and reports: VBA macros, Excel 4.0 (XLM) macro sheets, remote templates
+(template injection), DDE fields, auto-updating linked objects, embedded OLE objects and ActiveX, Equation Editor
+objects (CVE-2017-11882 family), unsafe zip paths and zip bombs, plus the document's stored properties. External
+hosts become DNS pivots. If `olevba` (`pip install oletools`) is installed it is run on a temp copy and its
+AutoExec / Suspicious / IOC lines are added. Legacy `.doc/.xls` checks are keyword heuristics because their macro
+source is compressed; olevba is the way to read it. The olevba output parsing is written from memory and has not
+been checked against a real install.
+
+Code: `portal_lib/office.py`.
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 
