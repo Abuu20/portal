@@ -46,7 +46,7 @@ hooks.closed = w => { if (w.id === 'diff') diffDismissed = true; };
 hooks.done = () => { if (autosave && !snapshotMode) saveScan(); };
 
 function snapshotPayload() {
-  return [...wins.values()].filter(w => w.res && w.id !== 'root' && w.id !== 'diff' && w.id !== 'next').sort((a, b) => a.seq - b.seq).map(w => ({
+  return [...wins.values()].filter(w => w.res && w.id !== 'root' && w.id !== 'diff' && w.id !== 'next' && w.id !== 'surface').sort((a, b) => a.seq - b.seq).map(w => ({
     id: w.id, module: w.spec.module, q: w.spec.q ?? '', title: w.titleEl.textContent, sub: w.spec.sub ?? '',
     depth: w.depth, parent: w.parent ?? 'root', res: w.res }));
 }

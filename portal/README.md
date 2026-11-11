@@ -95,6 +95,12 @@ This is a heuristic, not a guarantee: it errs toward blocking and fails closed w
 - **EPSS** (FIRST.org, free, no key): CVE windows show the 30-day exploit probability, and the Exposure window sorts CVEs by it. If FIRST.org is unreachable PORTAL simply omits it.
 - **Risk score 0-100:** a heuristic, not CVSS. It adds up what is on screen (critical findings, warnings, CISA KEV, high EPSS, risky services, scanner hits) and lists every contribution under *Why this score*, so you can argue with it.
 
+### Attack-surface map (v6.2)
+For a domain, the **Next steps** window offers *Map the attack surface* once the certificate-log subdomains are in. It takes up to 40 of them (dev / admin / staging-looking names first), checks which resolve, makes **one request per host** (https, then http), and shows one ranked table. No crawling, no payloads, public addresses only. Because it contacts every probed host it needs the authorisation tick-box.
+- What lifts a host's score (each contribution is listed): a non-production or admin-style name, a login form, a directory listing, a forgotten default web-server page, plain-http-only, a server version in the `Server` header, a CNAME to a dead address, and **possible subdomain takeover** (a CNAME to GitHub Pages, Heroku, S3, Azure, Fastly, Pantheon, Readme or Surge whose page shows the "unclaimed" message).
+- The score says what to look at first, not that something is vulnerable. A takeover hit is a strong lead, but confirm it before acting on it.
+- Hosts scoring 40+ feed back into Next steps and the risk score, and the top hosts get one-click pivots into *Site intelligence*.
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 

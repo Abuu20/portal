@@ -60,7 +60,7 @@ async function openToolCheck() {
    --------------------------------------------------------------------- */
 function gatherFacts() {
   const F = { bad: [], warn: [], tech: [], ports: [], risky: [], vulns: [], ip: null, web: null, login: false, hasCveWin: null,
-              epss: {}, kev: false, hasWebWin: false };
+              epss: {}, kev: false, hasWebWin: false, subs: null };
   for (const w of wins.values()) {
     if (!w.res || ['root', 'next', 'diff', 'ai'].includes(w.id)) continue;
     const m = w.spec.module, r = w.res;
@@ -83,6 +83,7 @@ function gatherFacts() {
       }
     } else if (m === 'ip' && !F.ip) F.ip = w.spec.q;
     else if (m === 'cve' && !F.hasCveWin) F.hasCveWin = w;
+    else if (m === 'subs' && Array.isArray(r.list) && r.list.length >= 2) F.subs = { domain: w.spec.q, n: r.list.length };
   }
   // what the tools you ran found (see /api/tool "findings")
   const fs = toolFindings;
@@ -94,6 +95,8 @@ function gatherFacts() {
   F.paramUrls = F.endpoints.filter(e => e.params && e.params.length);
   F.findCves = [...new Set(fs.filter(f => f.type === 'cve').map(f => f.id))];
   F.verified = fs.filter(f => f.type === 'vuln');
+  F.hosts = fs.filter(f => f.type === 'host');
+  F.hotHosts = F.hosts.filter(h => h.score >= 40).sort((a, b) => b.score - a.score);
   return F;
 }
 
@@ -116,6 +119,13 @@ function buildSuggestions(F) {
     add('bad:' + w.id, 100, 'bad', `Review “${w.titleEl.textContent}”`, `Critical: ${worstChip(w)}`, { type: 'focus', id: w.id });
   if (F.scanRisky.length)
     add('scanrisky', 97, 'bad', 'Your scan confirms risky services', `Open now: ${F.scanRisky.slice(0, 5).join(', ')}. Restrict them with a firewall or VPN, or check they need to be public.`, { type: 'none' });
+  for (const h of F.hotHosts.slice(0, 3))
+    add('host:' + h.host, 88, h.score >= 60 ? 'bad' : 'warn', `Look at ${h.host}`, (h.reasons[0] || 'ranked high on the attack surface').replace(/^\+\d+\s*/, ''),
+        { type: 'open', module: 'web', q: h.host });
+  if (F.subs && !F.hosts.length)
+    add('surface', 80, 'info', `Map the attack surface: ${F.subs.n} subdomains in certificate logs`,
+        'Checks which ones answer and ranks them: dev/admin names, login forms, forgotten default pages, possible takeovers. Contacts up to 40 hosts, one request each, no payloads.',
+        { type: 'surface', domain: F.subs.domain });
   if (F.findCves.length)
     add('findcves', 92, 'bad', `${F.findCves.length} CVE id${F.findCves.length > 1 ? 's' : ''} in the plugin scan`, `Start with ${F.findCves.slice(0, 3).join(', ')}.`,
         { type: 'open', module: 'cve', q: F.findCves[0] });
@@ -170,6 +180,7 @@ function computeRisk(F) {
   const risky = [...new Set([...F.risky, ...F.scanRisky])];
   if (risky.length) add(15, `Risky services exposed: ${risky.slice(0, 4).join(', ')}`);
   if (F.verified.length) add(30, `${F.verified.length} possible vulnerability line${F.verified.length > 1 ? 's' : ''} from your scanners`);
+  if (F.hotHosts.length) add(Math.min(20, F.hotHosts.length * 10), `${F.hotHosts.length} subdomain${F.hotHosts.length > 1 ? 's' : ''} worth a look (${F.hotHosts[0].host})`);
   if (F.findCves.length) add(10, `${F.findCves.length} CVE id${F.findCves.length > 1 ? 's' : ''} found by the plugin scan`);
   const score = Math.min(100, reasons.reduce((s, r) => s + r[0], 0));
   const tone = score >= 70 ? 'bad' : score >= 40 ? 'warn' : score >= 15 ? 'info' : 'ok';
@@ -204,6 +215,23 @@ function nextExtra() {
   return lastRanked + Object.values(nextState.out).map(t => `\n\n--- tool output ---\n${t}`).join('');
 }
 
+async function runSurface(item, chk, out, btn) {
+  if (!chk.checked) return toast('Tick the authorisation box first');
+  sfx.click(); btn.disabled = true; out.hidden = false; out.textContent = 'probing subdomains… (up to a minute)';
+  const r = await postJSON('/api/surface', { domain: item.act.domain, confirm: chk.checked });
+  btn.disabled = false;
+  if (r.error) { out.textContent = '⚠ ' + r.error; sfx.error(); return; }
+  out.hidden = true;
+  let w = wins.get('surface');
+  if (!w) {
+    w = createWindow({ id: 'surface', title: 'Attack surface', icon: '◈', depth: 1, parent: 'next', sub: item.act.domain });
+    edges.push({ a: 'next', b: 'surface' });
+  }
+  renderBody(w, r.result);
+  hooks.findings('surface', item.act.domain, r.hosts.map(h => ({ type: 'host', host: h.host, score: h.score, reasons: h.reasons, alive: h.alive })));
+  relayout(); updateStatus(); flash(w);
+}
+
 function suggestionEl(n, item, info, chk) {
   const card = el('div', { class: `nx nx-${item.tone}` },
     el('div', { class: 'nx-h' }, el('span', { class: 'nx-n', text: String(n) }), el('b', { text: item.title })),
@@ -211,6 +239,15 @@ function suggestionEl(n, item, info, chk) {
   const row = el('div', { class: 'links' });
   const act = item.act;
   if (act.type === 'none') return card;
+  if (act.type === 'surface') {
+    const out = el('pre', { class: 'toolout' });
+    out.hidden = true;
+    const b = el('button', { class: 'btn small', text: 'Map attack surface ⚠' });
+    b.addEventListener('click', () => runSurface(item, chk, out, b));
+    row.append(b);
+    card.append(row, out);
+    return card;
+  }
   if (act.type === 'focus') {
     row.append(el('button', { class: 'btn small', text: 'Show window', onclick: () => { const t = wins.get(act.id); if (t) { t.min ? restore(t) : flash(t); } } }));
   } else if (act.type === 'open') {
@@ -252,11 +289,11 @@ function fillNext(w, F, items, info) {
   chk.checked = nextState.auth;
   chk.addEventListener('change', () => { nextState.auth = chk.checked; });
   const list = el('div', { class: 'nxlist' }, items.map((it, n) => suggestionEl(n + 1, it, info, chk)));
-  const hasTool = items.some(i => i.act.type === 'tool');
-  w.body.append(
-    hasTool ? el('label', { class: 'auth nxauth' }, chk, ' I own or am authorised to test this target (needed for ⚠ and ☠ tools)') : null,
-    list,
-    el('p', { class: 'note', text: 'Suggestions come from simple rules over the results on screen. Nothing runs until you press a button.' }));
+  const hasTool = items.some(i => i.act.type === 'tool' || i.act.type === 'surface');
+  const parts = [];
+  if (hasTool) parts.push(el('label', { class: 'auth nxauth' }, chk, ' I own or am authorised to test this target (needed for ⚠ and ☠ tools)'));
+  parts.push(list, el('p', { class: 'note', text: 'Suggestions come from simple rules over the results on screen. Nothing runs until you press a button.' }));
+  w.body.append(...parts);
 }
 
 async function buildNext(force = false) {
