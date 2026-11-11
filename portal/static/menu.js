@@ -16,6 +16,7 @@ $('#more').addEventListener('click', e => openMenu(e.currentTarget, [
   { label: 'Save this scan now', run: () => { lastSavedSig = ''; saveScan().then(() => toast('Saved to history', true)); } },
   { label: 'Tool check (installed / missing)', run: () => openToolCheck() },
   { label: 'Link graph (how entities connect)', run: () => openGraph() },
+  { label: 'Shared infrastructure (across saved scans)', run: () => openCorrelate() },
   { label: 'Show next steps', run: () => showNextSteps() },
 ]));
 input.addEventListener('paste', e => {                    // pasting several lines into the search box opens bulk triage
