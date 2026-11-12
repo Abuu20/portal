@@ -27,9 +27,11 @@ def analyze(data: bytes) -> dict:
     if not (is_pcap or is_pcapng):
         return {}
 
+    tmp_path = None
     try:
         from scapy.all import rdpcap, DNS, DNSQR, Raw, TCP, UDP
-        packets = rdpcap(_path_of(data))
+        tmp_path = _path_of(data)
+        packets = rdpcap(tmp_path)
         rows.append(("Packets", str(len(packets)), None))
         hosts, dns_q, uris, streams = set(), [], set(), {}
         for pkt in packets:
@@ -64,6 +66,13 @@ def analyze(data: bytes) -> dict:
         rows.append(("scapy", "not installed (pip install scapy) — using raw fallback", "warn"))
     except Exception as e:
         rows.append(("parse error", f"{type(e).__name__}: {e}", "warn"))
+    finally:
+        if tmp_path:
+            import os as _os
+            try:
+                _os.unlink(tmp_path)
+            except OSError:
+                pass
 
     # raw fallback: just carve common file magic from raw bytes
     for magic, name in ((PNG, "PNG"), (JPEG, "JPEG"), (PDF, "PDF"), (ZIP, "ZIP"), (GZIP, "gzip")):

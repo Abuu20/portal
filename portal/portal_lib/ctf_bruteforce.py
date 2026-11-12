@@ -25,9 +25,14 @@ def _ntlm(pw: bytes) -> str:
             return ""
 
 
+def _digest(ctor):
+    """Wrap a hashlib constructor so calling it on bytes returns a hex string, not a hash object."""
+    return lambda pw: ctor(pw).hexdigest()
+
+
 ALGOS = {
-    "md5": hashlib.md5, "sha1": hashlib.sha1, "sha256": hashlib.sha256,
-    "sha512": hashlib.sha512, "sha224": hashlib.sha224, "sha384": hashlib.sha384,
+    "md5": _digest(hashlib.md5), "sha1": _digest(hashlib.sha1), "sha256": _digest(hashlib.sha256),
+    "sha512": _digest(hashlib.sha512), "sha224": _digest(hashlib.sha224), "sha384": _digest(hashlib.sha384),
     "ntlm": _ntlm,
 }
 

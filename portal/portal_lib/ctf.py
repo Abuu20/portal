@@ -112,18 +112,26 @@ def api_mask():
                                     str(j.get("algo", "md5")), int(j.get("limit") or 500_000)))
 
 
+def _rsa_int(j, key, required=True):
+    v = j.get(key)
+    if v in (None, ""):
+        if required:
+            raise KeyError(key)
+        return None
+    n = int(str(v), 0)
+    if n.bit_length() > 8192:
+        raise ValueError(f"{key} is too large (limit 8192 bits)")
+    return n
+
+
 @app.post("/api/ctf/rsa-advanced")
 def api_rsa_advanced():
     j = request.get_json(silent=True) or {}
     try:
         return jsonify(rsa_solve_extended(
-            int(str(j["n"]), 0), int(str(j["e"]), 0), int(str(j["c"]), 0),
-            p=int(str(j["p"]), 0) if j.get("p") else None,
-            q=int(str(j["q"]), 0) if j.get("q") else None,
-            d=int(str(j["d"]), 0) if j.get("d") else None,
-            e2=int(str(j["e2"]), 0) if j.get("e2") else None,
-            n2=int(str(j["n2"]), 0) if j.get("n2") else None,
-            c2=int(str(j["c2"]), 0) if j.get("c2") else None,
+            _rsa_int(j, "n"), _rsa_int(j, "e"), _rsa_int(j, "c"),
+            p=_rsa_int(j, "p", False), q=_rsa_int(j, "q", False), d=_rsa_int(j, "d", False),
+            e2=_rsa_int(j, "e2", False), n2=_rsa_int(j, "n2", False), c2=_rsa_int(j, "c2", False),
         ))
     except (KeyError, ValueError) as ex:
         return jsonify(error=f"bad input: {ex}"), 400
