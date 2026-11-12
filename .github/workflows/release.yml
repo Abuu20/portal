@@ -1,0 +1,36 @@
+name: Build and publish the .deb
+
+# Builds dist/portal-osint_*_all.deb on every push to main and attaches it to a
+# rolling "latest" GitHub Release, so a fresh machine only needs one command
+# (see README: "Install on a new machine") to get the current build.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # build-deb.sh reads git history for the version string
+
+      - name: Build package
+        working-directory: portal
+        run: ./build-deb.sh
+
+      - name: Publish rolling "latest" release
+        working-directory: portal
+        run: |
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest dist/*.deb \
+            --title "PORTAL (latest build)" \
+            --notes "Automatically built from $(git rev-parse --short HEAD) on $(date -u +%F). Install: see README." \
+            --prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -23,6 +23,35 @@ Optional OSINT tools (click-to-run inside PORTAL; no auto-run):
     pipx install maigret            # 3000+ sites, slower (1–3 min)
     pip install phonenumbers        # or: sudo apt install python3-phonenumbers  → phone lookups
 
+## Install on a new machine (.deb)
+
+The easiest way to move PORTAL to a new device: every push to `main` builds a `.deb` and publishes it to this
+repo's **Releases** page as a rolling build called `latest`. One command, any Debian/Kali/Ubuntu machine:
+
+    DEB=$(curl -sL https://api.github.com/repos/Abuu20/portal/releases/tags/latest \
+      | grep -o '"browser_download_url": *"[^"]*\.deb"' | cut -d'"' -f4 | head -1)
+    curl -sL "$DEB" -o /tmp/portal.deb && sudo apt install -y /tmp/portal.deb
+
+Or, without a terminal: open the repo's **Releases** page, the `latest` release, download the `.deb`, and
+double-click it (or right-click → Open With → software installer) in your file manager.
+
+`apt install` (not `dpkg -i`) so it pulls in `python3-flask` for you. After that, **run `portal`** (also in your
+application launcher) — the first run sets up your own background service for your user account (starts at login,
+127.0.0.1 only) and opens the window; later runs just open it. `portal --uninstall` stops and removes that
+service (your saved history is untouched); `sudo apt remove portal-osint` removes the program files.
+Update any time with the same `apt install` command — it reinstalls over itself and your history/notes/scope list
+are untouched (they live in `~/.local/share/portal`, which the package never touches).
+
+Build it yourself instead of using a release: `cd portal && ./build-deb.sh` (no root needed) makes
+`dist/portal-osint_*_all.deb` from your checkout. Packaging source: `portal/packaging/`, `portal/build-deb.sh`,
+`.github/workflows/release.yml`. The optional OSINT/toolbox binaries below are still a separate step — the
+package installs PORTAL itself, not nmap/sherlock/etc.
+
+This is the newest piece of PORTAL and the GitHub Actions release step has not been watched run on a real
+GitHub runner yet (only the package build and install were tested, in this sandbox). If `apt install
+./portal-osint_*_all.deb` fails or the Releases page has no `latest` build, use `./run.sh` (above) or the older
+`./install-kde.sh` from a git clone as a fallback — both still work exactly as before.
+
 ## Layout, sound and controls
 - **Tiles** (default) fills the whole screen with no scrolling: the screen is split into rectangles sized by how much each window has to show, and the splitter tries both directions at every cut to keep every tile readable. Past ~18 windows it falls back to a scrolling canvas.
 - **Flow** is the column view (left to right by relationship, scrollable, windows resizable). Switch with the Tiles/Flow button or press `L`.

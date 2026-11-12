@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: portal-osint
+Source: https://github.com/Abuu20/portal
+
+Files: *
+Copyright: Abuu20
+License: for-personal-use-see-repo
+ See https://github.com/Abuu20/portal for licensing terms.

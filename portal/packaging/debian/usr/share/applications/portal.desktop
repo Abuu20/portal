@@ -1,0 +1,23 @@
+[Desktop Entry]
+Type=Application
+Name=PORTAL
+GenericName=OSINT / recon lookup dashboard
+Comment=One search box for IPs, domains, files, usernames, CVEs and more — plus a CTF workbench
+Exec=portal
+Icon=portal
+Terminal=false
+Categories=Network;Security;
+StartupWMClass=portal
+Actions=Restart;Stop;Uninstall;
+
+[Desktop Action Restart]
+Name=Restart background service
+Exec=systemctl --user restart portal.service
+
+[Desktop Action Stop]
+Name=Stop background service
+Exec=systemctl --user stop portal.service
+
+[Desktop Action Uninstall]
+Name=Remove my background service
+Exec=portal --uninstall

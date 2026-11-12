@@ -1,0 +1,16 @@
+Package: portal-osint
+Version: __VERSION__
+Section: net
+Priority: optional
+Architecture: all
+Depends: python3 (>= 3.9), python3-flask
+Recommends: chromium-browser | chromium, whois, dnsutils, nmap
+Maintainer: Abuu20 <noreply@users.noreply.github.com>
+Homepage: https://github.com/Abuu20/portal
+Description: PORTAL - local OSINT / recon lookup dashboard
+ One search box for IPs, domains, emails, URLs, files, CVEs, usernames
+ and phone numbers, with a link-analysis graph, a CTF workbench
+ (decoders, flag finder, RSA/Vigenere/XOR crackers), offline Office
+ and binary triage, and an optional local toolbox of active scanners.
+ Runs entirely on 127.0.0.1; nothing leaves this machine unless you
+ explicitly run an active tool against a target you choose.

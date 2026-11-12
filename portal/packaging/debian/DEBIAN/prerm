@@ -1,0 +1,5 @@
+#!/bin/sh
+# Only unregisters anything running as root; each user's own background service (systemd --user)
+# is removed by running 'portal --uninstall' as that user, which this does NOT do automatically
+# (a package removal must not touch per-user state without being asked).
+exit 0

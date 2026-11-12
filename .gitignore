@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# .deb build output (built fresh by build-deb.sh / CI, not committed)
+portal/dist/
+portal/packaging/debian/usr/share/portal/
+portal/packaging/debian/DEBIAN/control

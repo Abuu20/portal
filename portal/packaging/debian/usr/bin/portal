@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# PORTAL launcher. The .deb installs the app files read-only, system-wide, under /usr/share/portal.
+# This script sets up *your own* background service (systemd --user, 127.0.0.1 only) the first time
+# you run it on this account, then starts it if needed and opens the window. Safe to run on any
+# machine the package is installed on, and safe to re-run after an update.
+set -euo pipefail
+APP=/usr/share/portal
+BIN="$HOME/.local/bin"
+UNIT="$HOME/.config/systemd/user/portal.service"
+DESK="$HOME/.local/share/applications/portal.desktop"
+PORT="${PORTAL_PORT:-8137}"
+DATA="$HOME/.local/share/portal"
+
+if [[ "${1:-}" == "--uninstall" ]]; then
+  systemctl --user disable --now portal.service 2>/dev/null || true
+  rm -f "$UNIT" "$DESK" "$BIN/portal-open"
+  systemctl --user daemon-reload 2>/dev/null || true
+  echo "Your background service is stopped and removed. History in $DATA was left alone."
+  echo "To remove the program itself: sudo apt remove portal-osint"
+  exit 0
+fi
+
+command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }
+python3 -c "import flask" 2>/dev/null || { echo "Flask is missing. The package should have installed it: sudo apt install --fix-broken portal-osint" >&2; exit 1; }
+
+if [[ ! -f "$UNIT" ]]; then
+  mkdir -p "$BIN" "$(dirname "$UNIT")" "$(dirname "$DESK")" "$DATA"
+  chmod 700 "$DATA"
+  cat > "$UNIT" <<UNITEOF
+[Unit]
+Description=PORTAL local lookup dashboard (127.0.0.1 only)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env python3 $APP/server.py --port $PORT
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/share/portal
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=default.target
+UNITEOF
+  systemctl --user daemon-reload
+  systemctl --user enable --now portal.service
+  echo "First run: set up your background service (starts automatically from now on, at login too)."
+else
+  systemctl --user start portal.service 2>/dev/null || true
+fi
+
+URL="http://127.0.0.1:$PORT/"
+for _ in $(seq 1 50); do
+  (exec 3<>/dev/tcp/127.0.0.1/$PORT) 2>/dev/null && break
+  sleep 0.1
+done
+for b in chromium chromium-browser google-chrome; do
+  if command -v "$b" >/dev/null; then exec "$b" --app="$URL" --class=portal; fi
+done
+exec xdg-open "$URL" 2>/dev/null || echo "Open $URL in your browser."
