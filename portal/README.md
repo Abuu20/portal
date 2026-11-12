@@ -167,6 +167,65 @@ that needs the authorisation tick-box. Up to 25 targets, one scan at a time, wit
 The scheduler lives inside PORTAL, so it only runs while PORTAL is running; the KDE background service keeps it
 running after login. Data stays in the local history database. Code: `portal_lib/watch.py`, `static/watch.js`.
 
+## CTF mode (v6.8)
+
+Built for HackTheBox, picoCTF, CTFtime-style events and similar — everything here is local and offline except
+where noted.
+
+**⋯ → CTF workbench** — paste text or numbers in, get an answer, nothing touches a target:
+- **Decode anything**: tries base64/32/58/85, hex, binary, decimal bytes, URL/HTML/unicode escapes, ROT13, Caesar
+  (best shift), Atbash, Morse, A1Z26, single-byte XOR, gzip/zlib/bzip2/lzma, and **chains them** (e.g. base64 → hex
+  → ROT13), searching breadth-first and ranking results by how readable they are.
+- **Find flags**: scans any text for `flag{...}`, `HTB{...}`, `picoCTF{...}` and 20+ other common CTF prefixes, plus
+  whatever custom prefix you type. "Scan everything on screen" runs it over every open window at once.
+- **Identify hash** → the hashcat mode to use. **JWT** → decodes (never forges) and flags `alg: none`, HS/RS
+  confusion, a `jku`/`kid`/`x5u` header, a missing `exp`. **RSA** → tries p/q given, small e, close primes (Fermat),
+  small d (Wiener), small factors. **Vigenère** → recovers the key from ciphertext (index of coincidence + chi-
+  squared). **Repeating-key XOR** → recovers the key the same way (Hamming distance on key length, then best byte
+  per column).
+- Any flag found gets a **Save to notebook** button.
+
+Code: `portal_lib/ctf_decode.py`, `portal_lib/ctf_crypto.py`, `portal_lib/ctf.py`, `static/ctf.js`.
+
+**Drop a file** — the usual file analysis now also runs, automatically, with no extra click:
+- **ELF / PE triage**: architecture, protections (NX, PIE, RELRO, stack canary / ASLR, DEP), section entropy
+  (flags likely-packed sections), risky imports (`gets`, `strcpy`, `system`, `ptrace`, `VirtualAlloc`,
+  `IsDebuggerPresent`, …) each with a one-line reason, and hints for UPX/PyInstaller/Go/.NET/Rust binaries.
+- **Hidden-data check**: another file signature appended or hidden inside this one (e.g. a ZIP glued onto a PNG),
+  bytes after a PNG/JPEG/GIF's logical end, PNG text chunks, JPEG comments, a basic LSB stego probe on images.
+- **Flag hunting**: strings (including UTF-16), base64-looking runs decoded automatically, and all of it fed
+  through the flag finder — shown as a **Possible flags** section pinned to the top when it finds any.
+
+Code: `portal_lib/ctf_binary.py`, `portal_lib/ctf_forensics.py`, `portal_lib/ctf_triage.py`.
+
+**⋯ → Scope & lab mode** — the list of hosts you're allowed to test (a domain, an IP, or a CIDR of /16 or
+narrower; `0.0.0.0/0`-style "everything" ranges are refused). Two optional switches, both off by default:
+**Scope lock** makes active tools and the attack-surface map refuse anything not on the list (useful for bug
+bounty, where scope really matters); **Lab mode** lets PORTAL's own site/URL/surface lookups reach **private**
+addresses (so a HackTheBox box on `10.10.x.x` over your VPN works), but only for hosts on the list — loopback and
+cloud-metadata addresses are never allowed, lab mode or not. Stored locally. Code: `portal_lib/scope.py`,
+`static/scope.js`.
+
+**⋯ → Notebook** — short local notes and evidence (a flag candidate, a credential found in a lab, a TODO), with
+one-click export to Markdown. Code: `portal_lib/notes.py`, `static/notes.js`.
+
+**Not built — left for you, with slots ready.** `portal_lib/tools.py` has a commented-out block titled
+"CTF slots" right under the existing tool catalog, one entry per tool below, in the same `{t}`/`{u}`/`active`/
+`install` shape as every tool already wired in. Uncomment, install the binary, done — PORTAL puts a button for it
+in the Local toolbox automatically. Why these aren't built: either the binary doesn't ship in this sandbox so the
+exact current CLI flags couldn't be checked against a real install (the same caveat as wpprobe/dalfox/sstimap/
+xsstrike when those were added), or the tool needs an input PORTAL's "Run tool" dialog doesn't collect yet
+(a wordlist path, a GDB script) and that dialog would need a field added for it first.
+
+| Slot (in `tools.py`) | What it's for | Why left to you |
+|---|---|---|
+| `radare2_info`, `ghidra_headless`, `upx_unpack` | Reverse engineering: disassembly/decompile a dropped binary, unpack UPX | No binary in this sandbox to check flags against |
+| `binwalk_extract`, `foremost_carve`, `volatility_imageinfo` | Forensics: carve embedded files, triage a memory dump | Same — not installed here |
+| `exiftool_full`, `zsteg_scan`, `steghide_extract` | Deeper metadata / steganography than the built-in LSB probe | `steghide` needs an interactive passphrase prompt subprocess can't satisfy cleanly |
+| `hashcat_quick`, `john_quick` | Password/hash cracking against a wordlist | Needs a wordlist-path field added to the Run-tool dialog first |
+| `nuclei_scan`, `ffuf_dirs`, `sqlmap_scan` | Web: template scanning, directory brute-force, SQL injection | Active + intrusive — want you to pick the risk/timeout settings for your events |
+| QR code decoding | Phishing/forensics: images with embedded QR codes | Not a CLI tool — belongs as a Python function (pyzbar) in `ctf_forensics.py`, not the tools table |
+
 ## One-click launcher and background service (KDE)
 Run `./install-kde.sh` once (no root; needs `python3-flask`). It copies PORTAL to `~/.local/opt/portal`, installs a systemd **user** service that starts at login (127.0.0.1 only, sandboxed), adds **PORTAL** to the application launcher (right-click: Restart / Stop; pin it to the panel) and a `portal` command. Clicking it starts the service if needed and opens an app-style window (Chromium if installed, otherwise your default browser). Re-run after updating; `./install-kde.sh --uninstall` removes it and keeps your history. Logs: `journalctl --user -u portal`. If you change `PORTAL_DATA`, add that path to `ReadWritePaths` in the unit.
 

@@ -50,6 +50,60 @@ TOOLS = {
                 "timeout": 300, "args": ["-u", "{u}"], "install": "sudo apt install sstimap", "cat": "web"},
     "xsstrike": {"label": "XSStrike XSS scan", "bin": "xsstrike", "kind": "url", "level": "intrusive", "active": True,
                  "timeout": 300, "args": ["-u", "{u}", "--skip"], "install": "sudo apt install xsstrike", "cat": "web"},
+
+    # ------------------------------------------------------------------------------------------------------------
+    # CTF slots — left for you to wire in. Each is a CLI binary you give PORTAL a button for, the same way every
+    # entry above works: uncomment, adjust args if your installed version's flags differ, and `sudo apt install`
+    # (or pipx/go install) the binary. "active": False means it never needs the tick-box (safe/offline tools);
+    # set it True only for something that sends traffic to the target. {t} = host/IP, {u} = full URL.
+    # A dropped FILE (not a live target) can't go through this table — see ctf_binary.py / ctf_forensics.py /
+    # ctf_triage.py instead, which already run automatically on every uploaded file.
+    # ------------------------------------------------------------------------------------------------------------
+
+    # --- reverse engineering (offline, static — point these at a file path you paste as the "target") ---
+    # "radare2_info": {"label": "radare2 auto-analysis (aaa; afl; iz)", "bin": "r2", "active": False, "timeout": 60,
+    #                  "args": ["-q", "-c", "aaa; afl; iz", "{t}"], "install": "sudo apt install radare2", "cat": "re"},
+    # "ghidra_headless": {"label": "Ghidra headless decompile", "bin": "analyzeHeadless", "active": False, "timeout": 300,
+    #                     "args": ["/tmp/ghidra_proj", "ctf", "-import", "{t}", "-postScript", "DecompileAll.java"],
+    #                     "install": "download Ghidra, put analyzeHeadless on PATH", "cat": "re"},
+    # "binwalk_extract": {"label": "binwalk (identify + extract)", "bin": "binwalk", "active": False, "timeout": 120,
+    #                     "args": ["-e", "{t}"], "install": "sudo apt install binwalk", "cat": "forensics"},
+    # "upx_unpack": {"label": "upx -d (unpack if UPX-packed)", "bin": "upx", "active": False, "timeout": 60,
+    #                "args": ["-d", "{t}", "-o", "/tmp/portal_unpacked"], "install": "sudo apt install upx-ucl", "cat": "re"},
+
+    # --- forensics / steganography (offline, point at a file path) ---
+    # "exiftool_full": {"label": "exiftool (full metadata)", "bin": "exiftool", "active": False, "timeout": 30,
+    #                   "args": ["{t}"], "install": "sudo apt install libimage-exiftool-perl", "cat": "forensics"},
+    # "zsteg_scan": {"label": "zsteg -a (PNG/BMP LSB steganography)", "bin": "zsteg", "active": False, "timeout": 60,
+    #                "args": ["-a", "{t}"], "install": "gem install zsteg", "cat": "forensics"},
+    # "steghide_extract": {"label": "steghide extract (needs a passphrase prompt — run by hand instead)", "bin": "steghide",
+    #                      "active": False, "timeout": 30, "args": ["info", "{t}"], "install": "sudo apt install steghide", "cat": "forensics"},
+    # "foremost_carve": {"label": "foremost file carving", "bin": "foremost", "active": False, "timeout": 120,
+    #                    "args": ["-i", "{t}", "-o", "/tmp/portal_carved"], "install": "sudo apt install foremost", "cat": "forensics"},
+    # "volatility_imageinfo": {"label": "volatility3 (memory dump triage)", "bin": "vol", "active": False, "timeout": 180,
+    #                          "args": ["-f", "{t}", "windows.info"], "install": "pip install volatility3", "cat": "forensics"},
+
+    # --- password / hash cracking (offline; needs a wordlist on disk, so these need a target *and* a wordlist
+    #     argument PORTAL doesn't collect yet — add a second field to the "Run tool" dialog in tools.js for it) ---
+    # "hashcat_quick": {"label": "hashcat (rockyou, mode auto)", "bin": "hashcat", "active": False, "timeout": 300,
+    #                   "args": ["-a", "0", "-m", "0", "{t}", "/usr/share/wordlists/rockyou.txt"],
+    #                   "install": "sudo apt install hashcat", "cat": "crypto"},
+    # "john_quick": {"label": "john the ripper (rockyou)", "bin": "john", "active": False, "timeout": 300,
+    #               "args": ["--wordlist=/usr/share/wordlists/rockyou.txt", "{t}"], "install": "sudo apt install john", "cat": "crypto"},
+
+    # --- phishing / mail (offline unless noted) ---
+    # "qrencode_decode": use an image-decoding library (pyzbar) in Python instead of a CLI tool — a job for
+    #     ctf_forensics.py, not this table, since it reads an uploaded image rather than a "target" string.
+
+    # --- web (active; same gating as dalfox/sstimap/xsstrike above) ---
+    # "nuclei_scan": {"label": "nuclei (CVE/misconfig templates)", "bin": "nuclei", "kind": "url", "active": True, "timeout": 300,
+    #                "args": ["-u", "{u}", "-silent"], "install": "sudo apt install nuclei", "cat": "web"},
+    # "ffuf_dirs": {"label": "ffuf directory brute-force", "bin": "ffuf", "kind": "url", "level": "intrusive", "active": True,
+    #              "timeout": 300, "args": ["-u", "{u}/FUZZ", "-w", "/usr/share/wordlists/dirb/common.txt", "-s"],
+    #              "install": "sudo apt install ffuf", "cat": "web"},
+    # "sqlmap_scan": {"label": "sqlmap (SQL injection)", "bin": "sqlmap", "kind": "url", "level": "intrusive", "active": True,
+    #                 "timeout": 600, "args": ["-u", "{u}", "--batch", "--level=1", "--risk=1"],
+    #                 "install": "sudo apt install sqlmap", "cat": "web"},
 }
 
 # helper-only binaries that are not buttons themselves but are worth reporting in the tool check
