@@ -70,3 +70,100 @@ def api_ctf(tool):
     except ZeroDivisionError:
         return jsonify(error="Bad input: the numbers are inconsistent (check n, e, c, p, q)"), 400
     return jsonify(error="Unknown tool"), 404
+
+from .ctf_advanced import (
+    affine_brute, bacon_decode, columnar_decode, common_modulus, fermat_factor,
+    franklin_reiter, hastad_broadcast, hill_decode_2x2, playfair_decode,
+    rail_fence_decode, rsa_solve_extended, small_factor, substitution_brute, wiener_attack,
+)
+from .ctf_bruteforce import crack_hash, crack_hash_chain, detect_hash_algos, mask_bruteforce, pin_bruteforce
+from .ctf_files import crack_zip, load_wordlist, openssl_decrypt, try_openssl
+from .ctf_network import analyze as pcap_analyze
+
+
+@app.post("/api/ctf/crack")
+def api_crack():
+    j = request.get_json(silent=True) or {}
+    h = str(j.get("hash", "")).strip()
+    if not h:
+        return jsonify(error="Provide a hash"), 400
+    words = load_wordlist(limit=int(j.get("limit") or 200_000))
+    r = crack_hash(h, words, algos=j.get("algos"), limit=int(j.get("limit") or 200_000))
+    return jsonify(r)
+
+
+@app.post("/api/ctf/crack-chain")
+def api_crack_chain():
+    j = request.get_json(silent=True) or {}
+    r = crack_hash_chain(str(j.get("hash", "")), list(j.get("chain") or []), load_wordlist())
+    return jsonify(r)
+
+
+@app.post("/api/ctf/pin")
+def api_pin():
+    j = request.get_json(silent=True) or {}
+    return jsonify(pin_bruteforce(str(j.get("target", "")), int(j.get("digits") or 4), j.get("algo")))
+
+
+@app.post("/api/ctf/mask")
+def api_mask():
+    j = request.get_json(silent=True) or {}
+    return jsonify(mask_bruteforce(str(j.get("mask", "")), str(j.get("hash", "")),
+                                    str(j.get("algo", "md5")), int(j.get("limit") or 500_000)))
+
+
+@app.post("/api/ctf/rsa-advanced")
+def api_rsa_advanced():
+    j = request.get_json(silent=True) or {}
+    try:
+        return jsonify(rsa_solve_extended(
+            int(str(j["n"]), 0), int(str(j["e"]), 0), int(str(j["c"]), 0),
+            p=int(str(j["p"]), 0) if j.get("p") else None,
+            q=int(str(j["q"]), 0) if j.get("q") else None,
+            d=int(str(j["d"]), 0) if j.get("d") else None,
+            e2=int(str(j["e2"]), 0) if j.get("e2") else None,
+            n2=int(str(j["n2"]), 0) if j.get("n2") else None,
+            c2=int(str(j["c2"]), 0) if j.get("c2") else None,
+        ))
+    except (KeyError, ValueError) as ex:
+        return jsonify(error=f"bad input: {ex}"), 400
+
+
+@app.post("/api/ctf/classic/<cipher>")
+def api_classic(cipher):
+    j = request.get_json(silent=True) or {}
+    text = str(j.get("text", ""))
+    key = str(j.get("key", ""))
+    if cipher == "playfair":
+        return jsonify(text=playfair_decode(text, key))
+    if cipher == "hill":
+        return jsonify(text=hill_decode_2x2(text, key))
+    if cipher == "bacon":
+        return jsonify(text=bacon_decode(text))
+    if cipher == "railfence":
+        return jsonify(text=rail_fence_decode(text, int(j.get("rails") or 3)))
+    if cipher == "columnar":
+        return jsonify(text=columnar_decode(text, key))
+    if cipher == "affine":
+        return jsonify(candidates=affine_brute(text))
+    if cipher == "substitution":
+        return jsonify(substitution_brute(text))
+    return jsonify(error="unknown cipher"), 404
+
+
+@app.post("/api/ctf/openssl")
+def api_openssl():
+    j = request.get_json(silent=True) or {}
+    import binascii
+    data = binascii.unhexlify(j.get("data_hex", "")) if j.get("data_hex") else base64.b64decode(j.get("data_b64", ""))
+    words = load_wordlist() if not j.get("password") else [str(j["password"]).encode()]
+    hits = try_openssl(data, words)
+    return jsonify(hits=hits)
+
+
+@app.post("/api/ctf/pcap")
+def api_pcap():
+    j = request.get_json(silent=True) or {}
+    import binascii
+    data = binascii.unhexlify(j.get("data_hex", "")) if j.get("data_hex") else base64.b64decode(j.get("data_b64", ""))
+    return jsonify(pcap_analyze(data))
