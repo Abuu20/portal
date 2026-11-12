@@ -1,4 +1,9 @@
-"""Local file analysis (type, hashes, EXIF/media metadata), the image-URL lookup and /api/file."""
+"""Local file analysis (type, hashes, EXIF/media metadata), the image-URL lookup and /api/file.
+
+Uploads are now persisted for 30 minutes under ``<PORTAL_DATA>/uploads/`` so file-based
+CTF tools (binwalk, exiftool, zsteg, upx, r2, ...) can be run on them after the analysis
+finishes. A daemon thread sweeps the folder; only paths inside it are accepted by /api/tool.
+"""
 from __future__ import annotations
 
 import base64
@@ -10,12 +15,79 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
+import uuid
 from flask import jsonify, request
 from urllib.parse import urlparse
 
 from .ctf_triage import add_ctf_triage
 from .office import analyze_office
-from .core import ExifTags, HAVE_PIL, Image, ImageOps, R, app, chip, fetch_chain, row
+from .core import DATA_DIR, ExifTags, HAVE_PIL, Image, ImageOps, R, app, chip, fetch_chain, row
+
+
+# --------------------------------------------------------------------------- #
+# Upload storage: kept for 30 min so CTF tools can re-run on the same file.
+# --------------------------------------------------------------------------- #
+
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
+os.makedirs(UPLOAD_DIR, mode=0o700, exist_ok=True)
+UPLOAD_TTL = 1800                                 # seconds
+
+
+def _store_upload(file_storage) -> tuple[str, str]:
+    """Save a FileStorage to UPLOAD_DIR. Returns (absolute_path, uid)."""
+    uid = uuid.uuid4().hex[:16]
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", os.path.basename(file_storage.filename or "upload.bin"))[:80] or "upload.bin"
+    path = os.path.join(UPLOAD_DIR, f"{uid}_{safe}")
+    file_storage.save(path)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return path, uid
+
+
+def _cleanup_loop():
+    """Delete uploads older than UPLOAD_TTL. Runs every 5 minutes; swallows every error."""
+    while True:
+        try:
+            now = time.time()
+            for name in os.listdir(UPLOAD_DIR):
+                p = os.path.join(UPLOAD_DIR, name)
+                try:
+                    if os.path.isfile(p) and now - os.path.getmtime(p) > UPLOAD_TTL:
+                        os.remove(p)
+                except OSError:
+                    pass
+        except Exception:
+            pass
+        time.sleep(300)
+
+
+threading.Thread(target=_cleanup_loop, name="portal-upload-cleanup", daemon=True).start()
+
+
+def is_safe_upload_path(path: str) -> bool:
+    """Only paths inside UPLOAD_DIR are accepted by /api/tool (kind=file)."""
+    try:
+        return os.path.realpath(path).startswith(os.path.realpath(UPLOAD_DIR) + os.sep)
+    except Exception:
+        return False
+
+
+def file_tool_list() -> list[str]:
+    """File-based tools from portal_lib.tools that are installed here."""
+    try:
+        from .tools import TOOLS
+        return [k for k, v in TOOLS.items() if v.get("kind") == "file" and shutil.which(v["bin"])]
+    except Exception:
+        return []
+
+
+# --------------------------------------------------------------------------- #
+# Format detection
+# --------------------------------------------------------------------------- #
 
 MAGIC = [
     (b"\xff\xd8\xff", "JPEG image"), (b"\x89PNG\r\n\x1a\n", "PNG image"), (b"GIF8", "GIF image"),
@@ -26,6 +98,7 @@ MAGIC = [
     (b"RIFF", "RIFF container (WAV / AVI / WebP)"),
 ]
 
+
 def identify(head):
     if head[4:8] == b"ftyp":
         return "ISO media (MP4 / MOV / HEIC family)"
@@ -34,6 +107,7 @@ def identify(head):
             return name
     return "unknown"
 
+
 def _hashes(path):
     h = {"md5": hashlib.md5(), "sha1": hashlib.sha1(), "sha256": hashlib.sha256()}
     with open(path, "rb") as f:
@@ -41,6 +115,7 @@ def _hashes(path):
             for x in h.values():
                 x.update(blk)
     return {k: v.hexdigest() for k, v in h.items()}
+
 
 def _clean(v):
     if hasattr(v, "numerator") and hasattr(v, "denominator"):
@@ -55,14 +130,17 @@ def _clean(v):
         return [_clean(x) for x in v][:8]
     return str(v)[:300]
 
+
 def _dms(v, ref):
     d, m, s = [float(x) for x in v]
     dec = d + m / 60 + s / 3600
     return -dec if str(ref).upper() in ("S", "W") else dec
 
+
 EDITORS = re.compile(r"photoshop|lightroom|gimp|canva|snapseed|pixelmator|affinity|paint\.net|picsart|facetune", re.I)
 
 AI_KEYS = ("parameters", "prompt", "workflow", "invokeai_metadata", "sd-metadata", "dream")
+
 
 def _analyze_image(path, name, size, hashes):
     Image.MAX_IMAGE_PIXELS = 200_000_000
@@ -107,13 +185,14 @@ def _analyze_image(path, name, size, hashes):
     xmp = xmp_m.group(0).decode("utf-8", "replace") if xmp_m else ""
 
     def xmp_val(tag):
-        m = re.search(rf"{tag}=\"([^\"]+)\"|<{tag}>([^<]+)</{tag}>", xmp)
+        m = re.search(rf'{tag}="([^"]+)"|<{tag}>([^<]+)</{tag}>', xmp)
         return (m.group(1) or m.group(2)) if m else None
 
     creator_tool = xmp_val("xmp:CreatorTool")
     software = ifd0.get("Software") or creator_tool
     c2pa = b"c2pa" in raw or b"jumbf" in raw
-    text_chunks = {k: v for k, v in info.items() if isinstance(v, str) and k.lower() not in ("exif", "icc_profile", "xmp") and not k.startswith("XML")}
+    text_chunks = {k: v for k, v in info.items()
+                   if isinstance(v, str) and k.lower() not in ("exif", "icc_profile", "xmp") and not k.startswith("XML")}
     ai = [k for k in text_chunks if k.lower() in AI_KEYS]
 
     def pick(d, *keys):
@@ -138,10 +217,12 @@ def _analyze_image(path, name, size, hashes):
             if k in gps:
                 gps_rows.append(row(k.replace("GPS", ""), _clean(gps[k])))
     used = {"Make", "Model", "Software", "HostComputer", "DateTime"}
-    other = [row(k, _clean(v)) for k, v in {**ifd0, **exif_ifd}.items() if k not in used and not isinstance(v, bytes) and k not in ("MakerNote", "PrintImageMatching")][:30]
+    other = [row(k, _clean(v)) for k, v in {**ifd0, **exif_ifd}.items()
+             if k not in used and not isinstance(v, bytes) and k not in ("MakerNote", "PrintImageMatching")][:30]
     text_rows = [row(k, v[:300]) for k, v in text_chunks.items()][:10]
     file_rows = [row("Name", name), row("Format", f"{fmt} · {w}×{h}" + (f" · {frames} frames" if frames > 1 else "")),
-                 row("Size", f"{size:,} bytes"), row("MD5", hashes["md5"]), row("SHA-1", hashes["sha1"]), row("SHA-256", hashes["sha256"])]
+                 row("Size", f"{size:,} bytes"), row("MD5", hashes["md5"]), row("SHA-1", hashes["sha1"]),
+                 row("SHA-256", hashes["sha256"])]
 
     chips = [chip("Image", f"{fmt} {w}×{h}", "info")]
     model = " ".join(x for x in (pick(ifd0, "Make"), pick(ifd0, "Model")) if x)
@@ -160,13 +241,17 @@ def _analyze_image(path, name, size, hashes):
     if c2pa:
         chips.append(chip("Content Credentials (C2PA)", "marker found", "ok"))
 
-    sections = [{"title": t, "rows": r} for t, r in (("File", file_rows), ("Camera & capture", cam_rows), ("Software", soft_rows), ("GPS", gps_rows), ("Embedded text", text_rows), ("Other EXIF", other)) if r]
+    sections = [{"title": t, "rows": r} for t, r in (
+        ("File", file_rows), ("Camera & capture", cam_rows), ("Software", soft_rows),
+        ("GPS", gps_rows), ("Embedded text", text_rows), ("Other EXIF", other)) if r]
     pivots = []
     if lat is not None:
         pivots.append({"module": "coords", "q": f"{lat:.6f}, {lon:.6f}", "label": "GPS → location", "auto": True})
     return R("Image analysis", "▣", highlights=chips, image=thumb, sections=sections, pivots=pivots,
              links=[{"label": "VirusTotal (by hash)", "url": f"https://www.virustotal.com/gui/file/{hashes['sha256']}"}],
-             note="Metadata shows how and where a file was made, not where it was posted. Social platforms usually strip EXIF, so missing metadata is normal.")
+             note="Metadata shows how and where a file was made, not where it was posted. "
+                  "Social platforms usually strip EXIF, so missing metadata is normal.")
+
 
 def _parse_iso6709(s):
     m = re.match(r"^\s*([+-]\d{1,3}(?:\.\d+)?)([+-]\d{1,3}(?:\.\d+)?)", str(s))
@@ -175,8 +260,11 @@ def _parse_iso6709(s):
     lat, lon = float(m.group(1)), float(m.group(2))
     return (lat, lon) if -90 <= lat <= 90 and -180 <= lon <= 180 else None
 
+
 def _analyze_media(path, name, size, hashes):
-    p = subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_format", "-show_streams", path], capture_output=True, text=True, timeout=30)
+    p = subprocess.run(["ffprobe", "-v", "error", "-print_format", "json",
+                        "-show_format", "-show_streams", path],
+                       capture_output=True, text=True, timeout=30)
     if p.returncode != 0:
         return None
     j = json.loads(p.stdout or "{}")
@@ -235,30 +323,42 @@ def _analyze_media(path, name, size, hashes):
     if vs:
         srows += [row("Video codec", vs.get("codec_name")), row("Frame rate", fps(vs)), row("Pixel format", vs.get("pix_fmt"))]
     if au:
-        srows += [row("Audio codec", au.get("codec_name")), row("Sample rate", au.get("sample_rate")), row("Channels", au.get("channels"))]
+        srows += [row("Audio codec", au.get("codec_name")), row("Sample rate", au.get("sample_rate")),
+                  row("Channels", au.get("channels"))]
     srows = [r for r in srows if r[1] not in ("", "None")]
     trows = [row("Make", make), row("Model", model), row("Encoder / software", encoder), row("Created", created)]
     trows = [r for r in trows if r[1] not in ("", "None")]
     other = [row(k, str(v)[:200]) for k, v in tags.items()][:25]
-    sections = [{"title": t, "rows": r} for t, r in (("File", rows), ("Streams", srows), ("Device & software", trows), ("All tags", other)) if r]
+    sections = [{"title": t, "rows": r} for t, r in (
+        ("File", rows), ("Streams", srows), ("Device & software", trows), ("All tags", other)) if r]
     if geo:
-        sections.insert(2, {"title": "GPS", "rows": [row("Latitude", f"{geo[0]:.6f}", "warn"), row("Longitude", f"{geo[1]:.6f}", "warn")]})
+        sections.insert(2, {"title": "GPS",
+                            "rows": [row("Latitude", f"{geo[0]:.6f}", "warn"),
+                                     row("Longitude", f"{geo[1]:.6f}", "warn")]})
     out = R(f"{kind} analysis", "▶", highlights=chips, sections=sections,
             links=[{"label": "VirusTotal (by hash)", "url": f"https://www.virustotal.com/gui/file/{hashes['sha256']}"}],
             note="Metadata shows how and where a file was made, not where it was posted.")
     if geo:
-        out["pivots"] = [{"module": "coords", "q": f"{geo[0]:.6f}, {geo[1]:.6f}", "label": "GPS → location", "auto": True}]
+        out["pivots"] = [{"module": "coords", "q": f"{geo[0]:.6f}, {geo[1]:.6f}",
+                          "label": "GPS → location", "auto": True}]
     ff = shutil.which("ffmpeg")
     if ff and vs:
         for ss in ("1", "0"):
             try:
-                pr = subprocess.run([ff, "-v", "error", "-ss", ss, "-i", path, "-frames:v", "1", "-vf", "scale=520:-2", "-f", "image2", "-c:v", "mjpeg", "pipe:1"], capture_output=True, timeout=25)
+                pr = subprocess.run([ff, "-v", "error", "-ss", ss, "-i", path, "-frames:v", "1",
+                                     "-vf", "scale=520:-2", "-f", "image2", "-c:v", "mjpeg", "pipe:1"],
+                                    capture_output=True, timeout=25)
             except Exception:
                 break
             if pr.stdout:
                 out["image"] = "data:image/jpeg;base64," + base64.b64encode(pr.stdout).decode()
                 break
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Main analysis
+# --------------------------------------------------------------------------- #
 
 def analyze_file(path, name):
     size = os.path.getsize(path)
@@ -282,13 +382,15 @@ def analyze_file(path, name):
             res = None
     if res is None:
         magic = identify(head)
-        rows = [row("Name", name), row("Size", f"{size:,} bytes"), row("Type (magic)", magic), row("MD5", hashes["md5"]), row("SHA-1", hashes["sha1"]), row("SHA-256", hashes["sha256"])]
+        rows = [row("Name", name), row("Size", f"{size:,} bytes"), row("Type (magic)", magic),
+                row("MD5", hashes["md5"]), row("SHA-1", hashes["sha1"]), row("SHA-256", hashes["sha256"])]
         tone = "warn" if magic.startswith(("ELF", "Windows PE")) else "info"
         res = R("File analysis", "▢", highlights=[chip("Type", magic, tone), chip("Size", f"{size:,} B", "info")],
                 sections=[{"title": "File", "rows": rows}],
                 links=[{"label": "VirusTotal (by hash)", "url": f"https://www.virustotal.com/gui/file/{hashes['sha256']}"}],
                 note="No format-specific parser for this type. Hashes are provided for threat-intel lookups.")
     return add_ctf_triage(res, path, size, head)
+
 
 def mod_imageurl(q):
     chain, code, _, body, final = fetch_chain(q, max_bytes=25_000_000)
@@ -307,18 +409,22 @@ def mod_imageurl(q):
     res.setdefault("pivots", []).append({"module": "dns", "q": host, "label": f"Host → {host}", "auto": False})
     return res
 
+
 @app.post("/api/file")
 def api_file():
     f = request.files.get("file")
     if not f:
         return jsonify(error="No file received"), 400
-    d = tempfile.mkdtemp(prefix="portal_")
     try:
-        path = os.path.join(d, "upload.bin")
-        f.save(path)
+        path, uid = _store_upload(f)
+    except Exception as e:
+        return jsonify(error=f"Could not save upload: {type(e).__name__}: {e}"), 500
+    try:
         res = analyze_file(path, os.path.basename(f.filename or "file"))
     except Exception as e:
         res = {"error": f"{type(e).__name__}: {e}"}
-    finally:
-        shutil.rmtree(d, ignore_errors=True)
+    # Always include upload metadata so the user can run CTF tools on the same file.
+    res["upload_id"] = uid
+    res["stored_path"] = path
+    res["available_tools"] = file_tool_list()
     return jsonify(res)
