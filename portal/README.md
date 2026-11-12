@@ -42,10 +42,26 @@ service (your saved history is untouched); `sudo apt remove portal-osint` remove
 Update any time with the same `apt install` command — it reinstalls over itself and your history/notes/scope list
 are untouched (they live in `~/.local/share/portal`, which the package never touches).
 
+**Does it install all the dependencies and tools?** Only `python3-flask` is a hard dependency, so `apt install`
+always gets you a working PORTAL. On Kali specifically, `apt` also grabs `whois`, `dnsutils`, `nmap`, `whatweb`,
+`traceroute` and a browser for you on its own (they're listed as `Recommends`, which `apt install` pulls in by
+default unless you pass `--no-install-recommends`). Everything else in the local toolbox — rustscan, katana, uro,
+wpprobe, dalfox, sstimap, xsstrike, plus Sherlock/Maigret (username search) and the `phonenumbers`/`oletools`
+Python packages — is **not** installed automatically; those are bigger, more specific, and some are Kali-only
+packages that don't exist on plain Debian/Ubuntu, so silently apt-installing a dozen security tools during
+package setup felt like the wrong default. Instead, run:
+
+    portal --install-tools
+
+once (it asks first, then installs everything above that your distro's repos have — a tool not found is normal
+outside Kali, not an error). It reads the install commands straight out of `portal_lib/tools.py`, so it can never
+list a tool PORTAL doesn't actually have, and it's safe to re-run any time (e.g. after adding something to the
+"CTF slots" block). Each tool still needs its own tick-box inside PORTAL before it will run against a target —
+installing it doesn't bypass that.
+
 Build it yourself instead of using a release: `cd portal && ./build-deb.sh` (no root needed) makes
 `dist/portal-osint_*_all.deb` from your checkout. Packaging source: `portal/packaging/`, `portal/build-deb.sh`,
-`.github/workflows/release.yml`. The optional OSINT/toolbox binaries below are still a separate step — the
-package installs PORTAL itself, not nmap/sherlock/etc.
+`.github/workflows/release.yml`.
 
 This is the newest piece of PORTAL and the GitHub Actions release step has not been watched run on a real
 GitHub runner yet (only the package build and install were tested, in this sandbox). If `apt install

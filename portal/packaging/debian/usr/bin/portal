@@ -20,6 +20,59 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--install-tools" ]]; then
+  # Installing the package only gets you PORTAL itself. This installs the recon/CTF tools its local
+  # toolbox and modules can call out to (see portal_lib/tools.py for the exact list) — reading that
+  # file directly so this never drifts out of sync with what PORTAL actually offers buttons for.
+  echo "This will ask for your password (sudo) and install several security tools system-wide."
+  echo "Some of these are from Kali's own repos (apt install may say 'not found' on plain Debian/Ubuntu —"
+  echo "that's expected there, not a bug) and each is still gated behind PORTAL's own confirm-before-running."
+  read -rp "Continue? [y/N] " ans
+  [[ "$ans" =~ ^[Yy] ]] || { echo "Cancelled."; exit 0; }
+  set +e   # best-effort from here: one missing/offline tool must not stop the rest from being tried and reported
+
+  # Every command below comes straight out of portal_lib/tools.py (and the two extra pip packages
+  # PORTAL's own modules look for: phonenumbers, oletools), never retyped here, so this can't drift.
+  mapfile -t APT_PKGS < <(python3 - "$APP" <<'PYEOF2'
+import sys
+sys.path.insert(0, sys.argv[1])
+from portal_lib.tools import TOOLS, EXTRA_BINS
+cmds = {v["install"] for v in TOOLS.values()} | {c for c, _ in EXTRA_BINS.values()}
+pkgs = {" ".join(sorted(c.split("sudo apt install ", 1)[1].split())) for c in cmds if c.startswith("sudo apt install")}
+print("\n".join(sorted(pkgs)))
+PYEOF2
+  )
+  mapfile -t PIPX_PKGS < <(python3 - "$APP" <<'PYEOF3'
+import sys
+sys.path.insert(0, sys.argv[1])
+from portal_lib.tools import EXTRA_BINS
+print("\n".join(sorted(c.split("pipx install ", 1)[1] for c, _ in EXTRA_BINS.values() if c.startswith("pipx install"))))
+PYEOF3
+  )
+  PKGS=()
+  for line in "${APT_PKGS[@]}"; do PKGS+=($line); done
+  if ((${#PKGS[@]})); then
+    echo "+ sudo apt install ${PKGS[*]}"
+    sudo apt install -y "${PKGS[@]}" || echo "(some of those were not found in your repos — normal outside Kali; the matching buttons just stay 'not installed' in PORTAL)"
+  fi
+  if command -v pipx >/dev/null; then
+    for p in "${PIPX_PKGS[@]}"; do [[ -z "$p" ]] && continue; echo "+ pipx install $p"; pipx install "$p" 2>&1 | tail -3; done
+  else
+    echo "pipx not found (sudo apt install pipx), so skipped: ${PIPX_PKGS[*]}"
+  fi
+  for mod in phonenumbers oletools; do
+    if ! python3 -c "import $mod" 2>/dev/null; then
+      echo "+ pip install --user $mod"
+      pip install --user --break-system-packages "$mod" 2>&1 | tail -3
+    fi
+  done
+  echo
+  echo "Done. Open PORTAL -> ... -> Tool check to see exactly what's installed and what each one needs."
+  echo "A few tools PORTAL has a slot for but doesn't install automatically (radare2, Ghidra, binwalk,"
+  echo "hashcat/john, nuclei/ffuf/sqlmap, ...): see the 'CTF slots' comment block in portal_lib/tools.py."
+  exit 0
+fi
+
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 1; }
 python3 -c "import flask" 2>/dev/null || { echo "Flask is missing. The package should have installed it: sudo apt install --fix-broken portal-osint" >&2; exit 1; }
 
