@@ -20,6 +20,7 @@ $('#more').addEventListener('click', e => openMenu(e.currentTarget, [
   { label: 'Report as HTML (printable, with link graph)', run: () => downloadHtmlReport() },
   { label: 'Watchlist' + (watchUnseen ? ` (${watchUnseen} new)` : ''), run: () => openWatchlist() },
   { label: 'Watch this target', run: () => (['domain', 'ip'].includes(scanType) ? openWatchlist(lastQuery) : toast('Only a domain or IP scan can be watched')) },
+  { label: 'CTF workbench (decode, flags, crypto)', run: () => openCtf() },
   { label: 'Show next steps', run: () => showNextSteps() },
 ]));
 input.addEventListener('paste', e => {                    // pasting several lines into the search box opens bulk triage
