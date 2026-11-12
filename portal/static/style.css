@@ -270,3 +270,4 @@ kbd{font:11px var(--mono);border:1px solid #2a3d5c;border-radius:4px;padding:1px
 .corr-scans{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .corr-tag{margin-left:8px;font:10px var(--ui);color:var(--warn);border:1px solid var(--warn);border-radius:10px;padding:1px 7px}
 .ctf textarea{min-height:110px;width:100%;margin:6px 0}.ctf .hsearch{margin:4px 0;width:100%}.ctf-flags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.ctf-flag{background:#0f2a1f;border:1px solid var(--ok);color:var(--ok);padding:3px 9px;border-radius:6px;cursor:pointer;font:13px var(--mono);word-break:break-all}
+.ctf-fl{display:inline-flex;gap:6px;align-items:center}

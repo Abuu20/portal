@@ -8,6 +8,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from flask import jsonify, request
 
+from .scope import scope_error
 from .core import DOMAIN_RE, R, UA, _check_public, _opener, app, cached, chip, doh
 from .net import mod_subs
 from .web import TECH_HTML, _Page
@@ -181,6 +182,8 @@ def api_surface():
     domain = str(j.get("domain", "")).strip().lower().rstrip(".")
     if not DOMAIN_RE.match(domain):
         return jsonify(error="Enter a domain name"), 400
+    if bad := scope_error(domain):
+        return jsonify(error=bad), 403
     if j.get("confirm") is not True:
         return jsonify(error="Tick the authorisation box: this contacts every probed subdomain"), 400
     if not _surface_gate.acquire(blocking=False):

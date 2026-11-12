@@ -257,6 +257,9 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 _opener = urllib.request.build_opener(_NoRedirect)
 
+LAB_HOOK = None          # set by scope.py: lets listed lab hosts (private ranges) through
+
+
 def _check_public(url):
     p = urlparse(url)
     if p.scheme not in ("http", "https") or not p.hostname:
@@ -265,6 +268,8 @@ def _check_public(url):
     for info in socket.getaddrinfo(p.hostname, port, proto=socket.IPPROTO_TCP):
         ip = ipaddress.ip_address(info[4][0])
         if not ip.is_global:
+            if LAB_HOOK and LAB_HOOK(p.hostname, ip):
+                continue
             raise ValueError(f"Refusing to fetch non-public address {ip}")
 
 def fetch_chain(url, max_hops=6, max_bytes=0):

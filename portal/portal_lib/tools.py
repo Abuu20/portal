@@ -9,6 +9,7 @@ from flask import jsonify, request
 from urllib.parse import parse_qsl, urlparse
 
 from .core import R, app, chip, norm_url, valid_target
+from .scope import scope_error
 
 # Tool catalog. Fields:
 #   bin / args   executable and argument list ({t} = host or IP, {u} = URL); never run through a shell
@@ -196,6 +197,8 @@ def api_tool():
     target, url = _tool_target(str(j.get("target", "")))
     if not target or (spec.get("kind") == "url" and not url):
         return jsonify(error="Invalid target"), 400
+    if spec["active"] and (bad := scope_error(target)):
+        return jsonify(error=bad), 403
     if spec["active"] and j.get("confirm") is not True:
         return jsonify(error="Tick the authorisation box before running active tools"), 400
     if spec.get("level") == "intrusive" and str(j.get("confirm_target", "")).strip().lower() != target:

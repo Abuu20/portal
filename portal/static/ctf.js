@@ -13,7 +13,7 @@ const CTF_TOOLS = {
 function ctfResult(tool, r) {
   const box = el('div', { class: 'ctf-out' });
   if (r.error) { box.append(el('div', { class: 'err', text: r.error })); return box; }
-  const flags = a => (a && a.length ? el('div', { class: 'ctf-flags' }, ...a.map(f => el('code', { class: 'ctf-flag', text: f, title: 'Click to copy', onclick: () => copyText(f) }))) : null);
+  const flags = a => (a && a.length ? el('div', { class: 'ctf-flags' }, ...a.map(f => el('span', { class: 'ctf-fl' }, el('code', { class: 'ctf-flag', text: f, title: 'Click to copy', onclick: () => copyText(f) }), el('button', { class: 'btn small', text: 'Save to notebook', onclick: () => saveNote('Flag candidate', f, 'flag') })))) : null);
   if (tool === 'magic') {
     box.append(flags(r.flags) || el('p', { class: 'note', text: 'No flag found automatically. Best decodings below.' }));
     for (const x of r.results) box.append(el('div', { class: 'corr-card' }, el('div', { class: 'note', text: x.chain.join(' → ') }), el('pre', { class: 'codeblk', text: x.text })));

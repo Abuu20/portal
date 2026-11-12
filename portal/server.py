@@ -19,7 +19,7 @@ import webbrowser
 
 from portal_lib.core import app
 # importing these modules registers their /api routes on the Flask app
-from portal_lib import accounts, ai, correlate, ctf, files, headers, lookups, routes, store, surface, tools, watch  # noqa: F401
+from portal_lib import accounts, ai, correlate, ctf, files, headers, lookups, routes, store, scope, surface, tools, watch, notes  # noqa: F401
 
 def main():
     ap = argparse.ArgumentParser(description="PORTAL local lookup dashboard")
