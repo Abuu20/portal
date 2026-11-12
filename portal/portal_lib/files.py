@@ -13,6 +13,7 @@ import tempfile
 from flask import jsonify, request
 from urllib.parse import urlparse
 
+from .ctf_triage import add_ctf_triage
 from .office import analyze_office
 from .core import ExifTags, HAVE_PIL, Image, ImageOps, R, app, chip, fetch_chain, row
 
@@ -287,7 +288,7 @@ def analyze_file(path, name):
                 sections=[{"title": "File", "rows": rows}],
                 links=[{"label": "VirusTotal (by hash)", "url": f"https://www.virustotal.com/gui/file/{hashes['sha256']}"}],
                 note="No format-specific parser for this type. Hashes are provided for threat-intel lookups.")
-    return res
+    return add_ctf_triage(res, path, size, head)
 
 def mod_imageurl(q):
     chain, code, _, body, final = fetch_chain(q, max_bytes=25_000_000)
