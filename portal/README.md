@@ -25,23 +25,25 @@ Optional OSINT tools (click-to-run inside PORTAL; no auto-run):
 
 ## Install on a new machine (.deb)
 
-The easiest way to move PORTAL to a new device: every push to `main` builds a `.deb` and publishes it to this
-repo's **Releases** page as a rolling build called `latest`. One command, any Debian/Kali/Ubuntu machine,
+This repo is private, so the public install command below doesn't point here — it points at
+[**Abuu20/portal-releases**](https://github.com/Abuu20/portal-releases), a small public repo that holds
+nothing but the built `.deb` (no source). Every push to `main` in this (private) repo builds a `.deb` and
+publishes it there as a rolling build called `latest`, so anyone with the link below can install PORTAL
+without needing access to this source repo or any token. One command, any Debian/Kali/Ubuntu machine,
 **both to install it the first time and to update it later** — it's the same command either way:
 
-    curl -fsSL https://raw.githubusercontent.com/Abuu20/portal/main/portal/install.sh | sudo bash
+    curl -fsSL https://raw.githubusercontent.com/Abuu20/portal-releases/main/install.sh | sudo bash
 
 That's the whole command — nothing to fill in. It looks up the latest `.deb`, downloads it, and runs
-`apt install` on it — the same thing the old multi-line curl/grep command did, just wrapped up in a script
-on the repo so you don't have to type it. Reading a script before piping it into `sudo bash` is a reasonable
-instinct, so the script itself (`portal/install.sh`) is short and plain — download and read it first if you'd
-rather:
+`apt install` on it. Reading a script before piping it into `sudo bash` is a reasonable instinct, so the
+script itself is short and plain — download and read it first if you'd rather:
 
-    curl -fsSLO https://raw.githubusercontent.com/Abuu20/portal/main/portal/install.sh
+    curl -fsSLO https://raw.githubusercontent.com/Abuu20/portal-releases/main/install.sh
     less install.sh && sudo bash install.sh
 
-Or, without a terminal at all: open the repo's **Releases** page, the `latest` release, download the `.deb`,
-and double-click it (or right-click → Open With → software installer) in your file manager.
+Or, without a terminal at all: open the [portal-releases](https://github.com/Abuu20/portal-releases) repo's
+**Releases** page, the `latest` release, download the `.deb`, and double-click it (or right-click → Open
+With → software installer) in your file manager.
 
 **Updating later is shorter still — once PORTAL is installed once, just run:**
 

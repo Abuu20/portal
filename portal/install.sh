@@ -5,22 +5,26 @@
 # build) and installs it with apt. Safe to re-run any time you want to
 # update -- it's the exact same command for install and update.
 #
-#   curl -fsSL https://raw.githubusercontent.com/Abuu20/portal/main/portal/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/Abuu20/portal-releases/main/install.sh | sudo bash
 #
 # Or download it first and read it before running, which is always a
 # reasonable thing to do with a script piped into a shell:
 #
-#   curl -fsSLO https://raw.githubusercontent.com/Abuu20/portal/main/portal/install.sh
+#   curl -fsSLO https://raw.githubusercontent.com/Abuu20/portal-releases/main/install.sh
 #   less install.sh
 #   sudo bash install.sh
+#
+# This repo (portal-releases) holds only the built .deb -- no source code.
+# PORTAL's source lives in a private repo; this one exists so this command
+# can work without any authentication.
 set -euo pipefail
 
-REPO="Abuu20/portal"
+REPO="Abuu20/portal-releases"
 API="https://api.github.com/repos/$REPO/releases/tags/latest"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "This installs a system package, so it needs root. Re-run with sudo:" >&2
-  echo "  curl -fsSL https://raw.githubusercontent.com/$REPO/main/portal/install.sh | sudo bash" >&2
+  echo "  curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | sudo bash" >&2
   exit 1
 fi
 

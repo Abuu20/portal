@@ -1,8 +1,9 @@
 name: Build and publish the .deb
 
-# Builds dist/portal-osint_*_all.deb on every push to main and attaches it to a
-# rolling "latest" GitHub Release, so a fresh machine only needs one command
-# (see README: "Install on a new machine") to get the current build.
+# Builds dist/portal-osint_*_all.deb on every push to main and publishes it to the
+# *public* Abuu20/portal-releases repo as a rolling "latest" release (this repo,
+# portal, is private -- portal-releases holds only the built .deb, no source --
+# so the install/update one-liner in the README can keep working with no token).
 
 on:
   push:
@@ -10,7 +11,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -24,13 +25,14 @@ jobs:
         working-directory: portal
         run: ./build-deb.sh
 
-      - name: Publish rolling "latest" release
+      - name: Publish rolling "latest" release to portal-releases
         working-directory: portal
         run: |
-          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release delete latest --yes --cleanup-tag -R Abuu20/portal-releases 2>/dev/null || true
           gh release create latest dist/*.deb \
+            -R Abuu20/portal-releases \
             --title "PORTAL (latest build)" \
-            --notes "Automatically built from $(git rev-parse --short HEAD) on $(date -u +%F). Install: see README." \
+            --notes "Automatically built from a private-repo commit on $(date -u +%F). Install: curl -fsSL https://raw.githubusercontent.com/Abuu20/portal-releases/main/install.sh | sudo bash" \
             --prerelease
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
