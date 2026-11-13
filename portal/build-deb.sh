@@ -5,8 +5,12 @@
 # (apt, not dpkg -i, so it pulls in python3-flask etc. automatically)
 set -euo pipefail
 cd "$(dirname "$0")"
-if git describe --tags --always >/dev/null 2>&1 && git describe --tags >/dev/null 2>&1; then
-  VER="$(git describe --tags --dirty 2>/dev/null | sed 's/^v//; s/-/./g')"
+# Only ever use a tag that looks like a real version (v1.2.3, 1.2.3, ...) -- the CI release
+# workflow also creates/moves a "latest" tag for the rolling release, and that one is not a
+# version number, so --match keeps it from ever being picked up here.
+if git describe --tags --always --match 'v[0-9]*' --match '[0-9]*' >/dev/null 2>&1 \
+   && git describe --tags --match 'v[0-9]*' --match '[0-9]*' >/dev/null 2>&1; then
+  VER="$(git describe --tags --dirty --match 'v[0-9]*' --match '[0-9]*' 2>/dev/null | sed 's/^v//; s/-/./g')"
 else
   VER="0~$(date +%Y%m%d).$(git rev-parse --short=8 HEAD 2>/dev/null || echo 0)"
 fi
