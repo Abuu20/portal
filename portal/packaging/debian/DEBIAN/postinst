@@ -2,6 +2,22 @@
 set -e
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q /usr/share/applications || true
 command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -qf /usr/share/icons/hicolor || true
+
+# An old dev setup once placed the launcher at ~/.local/bin/portal for some users. On most
+# desktop distros (including Kali) ~/.local/bin comes before /usr/bin on PATH, so that stale
+# file permanently shadows this package's real /usr/bin/portal -- forever, even across
+# upgrades, and apt can never see or clean it up since it's outside any package. Clean it up
+# for whoever actually ran this install, if we can tell who that was.
+TARGET_USER="${SUDO_USER:-}"
+if [ -n "$TARGET_USER" ] && [ "$TARGET_USER" != "root" ]; then
+  TARGET_HOME=$(getent passwd "$TARGET_USER" 2>/dev/null | cut -d: -f6)
+  SHADOW="$TARGET_HOME/.local/bin/portal"
+  if [ -n "$TARGET_HOME" ] && [ -f "$SHADOW" ] && ! cmp -s "$SHADOW" /usr/bin/portal 2>/dev/null; then
+    echo "Removing a stale $SHADOW left by an older setup -- it was shadowing this package's /usr/bin/portal on your PATH."
+    rm -f "$SHADOW"
+  fi
+fi
+
 echo "PORTAL installed. Run 'portal' (or find it in your application launcher) to start it."
 echo "It sets up its own background service in your user account the first time you run it."
 echo "Want the recon/CTF command-line tools too (nmap, whois, rustscan, dalfox, ...)? Run: portal --install-tools"

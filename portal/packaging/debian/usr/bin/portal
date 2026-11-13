@@ -14,6 +14,14 @@ DATA="$HOME/.local/share/portal"
 if [[ "${1:-}" == "--uninstall" ]]; then
   systemctl --user disable --now portal.service 2>/dev/null || true
   rm -f "$UNIT" "$DESK" "$BIN/portal-open"
+  # An old dev setup once placed a copy of this launcher at ~/.local/bin/portal for some
+  # users, which shadows the real /usr/bin/portal on PATH (~/.local/bin comes first) and
+  # survives even "apt remove --purge" since it's outside any package. If one is sitting
+  # there and isn't just a symlink back to us, it's always a stale leftover -- remove it too.
+  if [[ -f "$BIN/portal" ]] && [[ "$(readlink -f "$BIN/portal" 2>/dev/null)" != "$(readlink -f "$0")" ]]; then
+    rm -f "$BIN/portal"
+    echo "Also removed a stale $BIN/portal that was shadowing this command -- run 'hash -r' in any open terminal."
+  fi
   systemctl --user daemon-reload 2>/dev/null || true
   echo "Your background service is stopped and removed. History in $DATA was left alone."
   echo "To remove the program itself: sudo apt remove portal-osint"
