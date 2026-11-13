@@ -20,6 +20,15 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--update" ]]; then
+  # Re-runs the same one-line installer this package was first installed with, so "update" is never
+  # a different, longer command to remember than "install" -- it's this.
+  echo "+ Fetching the latest PORTAL build and installing it (needs sudo)..."
+  command -v curl >/dev/null || { echo "curl is required (sudo apt install curl)" >&2; exit 1; }
+  curl -fsSL https://raw.githubusercontent.com/Abuu20/portal/main/portal/install.sh | sudo bash
+  exit $?
+fi
+
 if [[ "${1:-}" == "--install-tools" ]]; then
   # Installing the package only gets you PORTAL itself. This installs the recon/CTF tools its local
   # toolbox and modules can call out to (see portal_lib/tools.py for the exact list) — reading that

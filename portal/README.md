@@ -26,21 +26,37 @@ Optional OSINT tools (click-to-run inside PORTAL; no auto-run):
 ## Install on a new machine (.deb)
 
 The easiest way to move PORTAL to a new device: every push to `main` builds a `.deb` and publishes it to this
-repo's **Releases** page as a rolling build called `latest`. One command, any Debian/Kali/Ubuntu machine:
+repo's **Releases** page as a rolling build called `latest`. One command, any Debian/Kali/Ubuntu machine,
+**both to install it the first time and to update it later** — it's the same command either way:
 
-    DEB=$(curl -sL https://api.github.com/repos/Abuu20/portal/releases/tags/latest \
-      | grep -o '"browser_download_url": *"[^"]*\.deb"' | cut -d'"' -f4 | head -1)
-    curl -sL "$DEB" -o /tmp/portal.deb && sudo apt install -y /tmp/portal.deb
+    curl -fsSL https://raw.githubusercontent.com/Abuu20/portal/main/portal/install.sh | sudo bash
 
-Or, without a terminal: open the repo's **Releases** page, the `latest` release, download the `.deb`, and
-double-click it (or right-click → Open With → software installer) in your file manager.
+That's the whole command — nothing to fill in. It looks up the latest `.deb`, downloads it, and runs
+`apt install` on it — the same thing the old multi-line curl/grep command did, just wrapped up in a script
+on the repo so you don't have to type it. Reading a script before piping it into `sudo bash` is a reasonable
+instinct, so the script itself (`portal/install.sh`) is short and plain — download and read it first if you'd
+rather:
 
-`apt install` (not `dpkg -i`) so it pulls in `python3-flask` for you. After that, **run `portal`** (also in your
-application launcher) — the first run sets up your own background service for your user account (starts at login,
-127.0.0.1 only) and opens the window; later runs just open it. `portal --uninstall` stops and removes that
-service (your saved history is untouched); `sudo apt remove portal-osint` removes the program files.
-Update any time with the same `apt install` command — it reinstalls over itself and your history/notes/scope list
-are untouched (they live in `~/.local/share/portal`, which the package never touches).
+    curl -fsSLO https://raw.githubusercontent.com/Abuu20/portal/main/portal/install.sh
+    less install.sh && sudo bash install.sh
+
+Or, without a terminal at all: open the repo's **Releases** page, the `latest` release, download the `.deb`,
+and double-click it (or right-click → Open With → software installer) in your file manager.
+
+**Updating later is shorter still — once PORTAL is installed once, just run:**
+
+    portal --update
+
+That's the same one-line installer above, just already saved on your machine as part of the package, so you
+never have to re-type or re-find the `curl` command again. It still asks for `sudo` (it's installing a system
+package) and still leaves your history/notes/scope list alone.
+
+`apt install` (not `dpkg -i`) so it pulls in `python3-flask` for you. After installing, **run `portal`** (also
+in your application launcher) — the first run sets up your own background service for your user account
+(starts at login, 127.0.0.1 only) and opens the window; later runs just open it. `portal --uninstall` stops
+and removes that service (your saved history is untouched); `sudo apt remove portal-osint` removes the
+program files. Updating (either way above) never touches your history/notes/scope list — they live in
+`~/.local/share/portal`, which the package never touches.
 
 **Does it install all the dependencies and tools?** Only `python3-flask` is a hard dependency, so `apt install`
 always gets you a working PORTAL. On Kali specifically, `apt` also grabs `whois`, `dnsutils`, `nmap`, `whatweb`,
